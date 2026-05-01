@@ -42,14 +42,14 @@ int main() {
         const double zoom    { 3.5 / (xmax - xmin) };
         const int    maxiter { static_cast<int>(base_quality * std::sqrt(2.0 * std::log2(zoom))) };
 
-        fractal_pl plane(xmin, xmax, ymin, ymax, 24000, 18000);
+        fractal_pl plane(xmin, xmax, ymin, ymax, 44000, 33000);
 
         const std::string color_scheme {"crazy"};
-        const std::string output_file  {"double_spiral.ppm"};
+        const std::string output_file  {"double_spiral_hires.ppm"};
 
-        std::cout << "zoom    = " << zoom    << "\n";
-        std::cout << "maxiter = " << maxiter << "\n";
-        std::cout << "pixel   = " << 24000 * 18000 << "\n";
+        std::cout << "zoom    = " << zoom      << "\n";
+        std::cout << "maxiter = " << maxiter   << "\n";
+        std::cout << "pixel   = " << 44000 * 33000 << "\n";
 
         const auto start_time {std::chrono::steady_clock::now()};
 
