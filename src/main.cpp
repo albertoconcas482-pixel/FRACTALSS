@@ -17,13 +17,10 @@
  *   2. mandel_set  — compute Mandelbrot membership for each point
  *   3. render      — colorize and write the result to a PPM file
  *
- * This file is intentionally kept flexible: viewport, resolution,
- * maxiter and color scheme are configured here and change frequently.
- *
  * maxiter is derived from zoom level using the empirical formula:
- *   zoom   = 3.5 / (xmax - xmin)
+ *   zoom    = 3.5 / (xmax - xmin)
  *   maxiter = base * sqrt(2 * log2(zoom))
- * where base = 200 is a tunable quality factor.
+ * where base_quality is a tunable quality factor.
  */
 int main() {
     std::atomic<bool> timer_running {false};
@@ -42,10 +39,12 @@ int main() {
         const int    maxiter { static_cast<int>(base_quality * std::sqrt(2.0 * std::log2(zoom))) };
 
         fractal_pl plane(xmin, xmax, ymin, ymax, 12000, 9000);
-        std::string name {"cardioide_tail"};
 
-        std::cout << "zoom   = " << zoom    << "\n";
-        std::cout << "maxiter= " << maxiter << "\n";
+        const std::string color_scheme {"crazy"};
+        const std::string output_file  {"cardioide_tail"};
+
+        std::cout << "zoom    = " << zoom    << "\n";
+        std::cout << "maxiter = " << maxiter << "\n";
 
         const auto start_time {std::chrono::steady_clock::now()};
 
@@ -69,8 +68,8 @@ int main() {
         });
 
         mandel_set::mandel_check(plane, maxiter);
-        render::render_color(plane, name);
-        render::render_to_ppm(plane, name);
+        render::render_color(plane, color_scheme);
+        render::render_to_ppm(plane, output_file);
 
         timer_running = false;
         if (timer_thread.joinable()) {
@@ -86,7 +85,7 @@ int main() {
                   << total_seconds
                   << " s\n";
 
-        std::cout << "Render completato: " << name << ".ppm\n";
+        std::cout << "Render completato: " << output_file << ".ppm\n";
     }
     catch (const std::exception& e) {
         timer_running = false;
