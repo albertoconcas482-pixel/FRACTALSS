@@ -41,7 +41,7 @@ int main() {
         fractal_pl plane(xmin, xmax, ymin, ymax, 24000, 18000);
 
         const std::string color_scheme {"crazy"};
-        const std::string output_file  {"cardioide_tail"};
+        const std::string output_file  {"cardioide_tail.ppm"};
 
         std::cout << "zoom    = " << zoom    << "\n";
         std::cout << "maxiter = " << maxiter << "\n";
@@ -86,7 +86,7 @@ int main() {
                   << total_seconds
                   << " s\n";
 
-        std::cout << "Render completato: " << output_file << ".ppm\n";
+        std::cout << "Render completato: " << output_file << "\n";
     }
     catch (const std::exception& e) {
         timer_running = false;
