@@ -54,6 +54,49 @@ Il README copre: pipeline, struttura, note architetturali, istruzioni di build, 
 
 ---
 
+## 1 Maggio 2026 — Sessione di esplorazione e limiti
+
+### Relazione zoom/iterazioni
+
+Abbiamo ragionato sulla relazione tra livello di zoom e `maxiter`. La formula empirica adottata è:
+
+```
+zoom    = 3.5 / (xmax - xmin)
+maxiter = base_quality * sqrt(2 * log2(zoom))
+```
+
+con `base_quality = 200`. La formula è stata integrata direttamente nel `main.cpp`: `maxiter` non è più hardcodato ma calcolato a runtime dal viewport corrente. Il programma stampa `zoom` e `maxiter` all'avvio per trasparenza.
+
+### Esplorazione di zone del set
+
+Sono stati eseguiti render su zone specifiche:
+
+- **Coda della cardioide** — centro `(-1.786, 0.0)`, ampiezza `0.008`. Zona di giunzione cardioide/bulbo-2, ricca di filamenti. `zoom ≈ 437`, `maxiter ≈ 838`.
+- **Frangia superiore cardioide** — centro `(-0.85, 0.13)`, ampiezza `0.10`. `zoom ≈ 35`, `maxiter ≈ 640`.
+- **Spirale doppia** — centro `(-0.7568, 0.0670)`, ampiezza `0.004`. Coordinate ricavate da un explorer esterno. `zoom ≈ 875`, `maxiter ≈ 888`. Tempo di render a `24000×18000`: **178 secondi**. Questa zona non beneficia degli early exit cardioide/bulbo perché i punti sono quasi tutti esterni al set — ogni pixel esegue il loop iterativo completo.
+
+### Limite di memoria — std::bad_alloc
+
+Tentando di alzare la risoluzione a `44000×33000` (≈1.45 miliardi di pixel) per un render da ~10 minuti, il programma ha lanciato `std::bad_alloc`.
+
+**Causa:** `fractal_el` pesa circa **32 byte** per elemento (16 byte per `std::complex<double>`, 4 per `int escapeiter`, 1 per `bool inside`, 3 per `r/g/b`, più padding). Il vettore `fractal_pl::data_` alloca tutti i pixel in memoria contemporaneamente:
+
+```
+44000 × 33000 × 32 byte ≈ 44 GB
+```
+
+La macchina ha 32 GB di RAM — allocazione impossibile.
+
+**Limite pratico attuale:** la risoluzione massima gestibile è circa `24000×18000` (432M pixel × 32 byte ≈ 3.3 GB), con margine sufficiente per il resto del sistema.
+
+**Strade per superare il limite (roadmap):**
+
+1. **Eliminare `c` da `fractal_el`** — la coordinata complessa è ridondante: è calcolabile deterministicamente dalla posizione `(ix, iy)` nella griglia e dai parametri del viewport. Rimuoverla risparmia 16 byte per pixel, portando il peso a ~16 byte. La risoluzione massima raddoppierebbe.
+2. **Rendering a strisce** — calcolare e scrivere su file una striscia orizzontale alla volta, tenendo in memoria solo `ny/N` righe per volta. Richiede una modifica alla pipeline ma elimina il limite di RAM in modo quasi completo.
+3. **Compattare `fractal_el`** — sostituire `int escapeiter` con `uint16_t` (max 65535 iterazioni, sufficiente per zoom moderati) e rimuovere `inside` (deducibile da `escapeiter == maxiter`). Si arriverebbe a ~12 byte per elemento.
+
+---
+
 ## Roadmap — Prossimi step
 
 ### Ottimizzazioni kernel

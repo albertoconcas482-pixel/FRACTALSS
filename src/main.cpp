@@ -27,29 +27,25 @@ int main() {
     std::thread timer_thread;
 
     try {
-        // --- viewport: spirale doppia, centro (-0.7568, 0.0670) ---
-        constexpr double cx    {-0.7568};
-        constexpr double cy    { 0.0670};
-        constexpr double half  { 0.002};
-
-        constexpr double xmin  { cx - half };
-        constexpr double xmax  { cx + half };
-        constexpr double ymin  { cy - half };
-        constexpr double ymax  { cy + half };
+        // --- viewport: insieme standard, visione completa ---
+        constexpr double xmin  {-2.5};
+        constexpr double xmax  { 1.0};
+        constexpr double ymin  {-1.25};
+        constexpr double ymax  { 1.25};
 
         // maxiter calibrated on zoom level
         constexpr double base_quality {200.0};
         const double zoom    { 3.5 / (xmax - xmin) };
         const int    maxiter { static_cast<int>(base_quality * std::sqrt(2.0 * std::log2(zoom))) };
 
-        fractal_pl plane(xmin, xmax, ymin, ymax, 44000, 33000);
+        fractal_pl plane(xmin, xmax, ymin, ymax, 12000, 9000);
 
         const std::string color_scheme {"crazy"};
-        const std::string output_file  {"double_spiral_hires.ppm"};
+        const std::string output_file  {"mandelbrot_full.ppm"};
 
-        std::cout << "zoom    = " << zoom      << "\n";
-        std::cout << "maxiter = " << maxiter   << "\n";
-        std::cout << "pixel   = " << 44000 * 33000 << "\n";
+        std::cout << "zoom    = " << zoom    << "\n";
+        std::cout << "maxiter = " << maxiter << "\n";
+        std::cout << "pixel   = " << 12000 * 9000 << "\n";
 
         const auto start_time {std::chrono::steady_clock::now()};
 
