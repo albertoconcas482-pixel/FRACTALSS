@@ -15,6 +15,8 @@ fractal_pl::fractal_pl(double xmin, double xmax,
 }
 
 void fractal_pl::init_grid() {
+    // dx and dy are the step sizes between adjacent points
+    // along the real and imaginary axes respectively.
     const auto dx{(xmax_ - xmin_) / static_cast<double>(nx_ - 1)};
     const auto dy{(ymax_ - ymin_) / static_cast<double>(ny_ - 1)};
 
@@ -23,6 +25,7 @@ void fractal_pl::init_grid() {
             const auto i{row * nx_ + col};
 
             const auto real{xmin_ + static_cast<double>(col) * dx};
+            // imag decreases with row: row 0 = ymax (top of viewport)
             const auto imag{ymax_ - static_cast<double>(row) * dy};
 
             data_[i].c = {real, imag};
