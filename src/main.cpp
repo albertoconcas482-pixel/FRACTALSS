@@ -28,8 +28,8 @@ int main() {
 
     try {
         // --- viewport: frangia superiore cardioide principale, zoom medio ---
-        constexpr double xmin  {-0.75};
-        constexpr double xmax  {-0.65};
+        constexpr double xmin  {-0.90};
+        constexpr double xmax  {-0.80};
         constexpr double ymin  { 0.08};
         constexpr double ymax  { 0.18};
 
