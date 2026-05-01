@@ -27,11 +27,11 @@ int main() {
     std::thread timer_thread;
 
     try {
-        // --- viewport: giunzione cardioide/bulbo-2, coda a (-1.786, 0) ---
-        constexpr double xmin  {-1.790};
-        constexpr double xmax  {-1.782};
-        constexpr double ymin  {-0.004};
-        constexpr double ymax  {  0.004};
+        // --- viewport: frangia superiore cardioide principale, zoom medio ---
+        constexpr double xmin  {-0.75};
+        constexpr double xmax  {-0.65};
+        constexpr double ymin  { 0.08};
+        constexpr double ymax  { 0.18};
 
         // maxiter calibrated on zoom level
         constexpr double base_quality {200.0};
@@ -41,7 +41,7 @@ int main() {
         fractal_pl plane(xmin, xmax, ymin, ymax, 24000, 18000);
 
         const std::string color_scheme {"crazy"};
-        const std::string output_file  {"cardioide_tail.ppm"};
+        const std::string output_file  {"cardioid_fringe_medium.ppm"};
 
         std::cout << "zoom    = " << zoom    << "\n";
         std::cout << "maxiter = " << maxiter << "\n";
