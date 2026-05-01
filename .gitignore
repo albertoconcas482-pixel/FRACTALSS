@@ -1,0 +1,10 @@
+build/
+build-debug/
+build-release/
+
+*.ppm
+*.png
+*.jpg
+*.jpeg
+
+crazy
