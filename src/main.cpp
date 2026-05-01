@@ -9,6 +9,16 @@
 #include "mandel_set.hpp"
 #include "render.hpp"
 
+/*
+ * Entry point. Orchestrates the rendering pipeline:
+ *
+ *   1. fractal_pl  — build the complex plane grid
+ *   2. mandel_set  — compute Mandelbrot membership for each point
+ *   3. render      — colorize and write the result to a PPM file
+ *
+ * This file is intentionally kept flexible: viewport, resolution,
+ * maxiter and color scheme are configured here and change frequently.
+ */
 int main() {
     std::atomic<bool> timer_running {false};
     std::thread timer_thread;
