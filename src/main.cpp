@@ -27,11 +27,15 @@ int main() {
     std::thread timer_thread;
 
     try {
-        // --- viewport: frangia superiore cardioide principale, zoom medio ---
-        constexpr double xmin  {-0.90};
-        constexpr double xmax  {-0.80};
-        constexpr double ymin  { 0.08};
-        constexpr double ymax  { 0.18};
+        // --- viewport: spirale doppia, centro (-0.7568, 0.0670) ---
+        constexpr double cx    {-0.7568};
+        constexpr double cy    { 0.0670};
+        constexpr double half  { 0.002};
+
+        constexpr double xmin  { cx - half };
+        constexpr double xmax  { cx + half };
+        constexpr double ymin  { cy - half };
+        constexpr double ymax  { cy + half };
 
         // maxiter calibrated on zoom level
         constexpr double base_quality {200.0};
@@ -41,7 +45,7 @@ int main() {
         fractal_pl plane(xmin, xmax, ymin, ymax, 24000, 18000);
 
         const std::string color_scheme {"crazy"};
-        const std::string output_file  {"cardioid_fringe_medium.ppm"};
+        const std::string output_file  {"double_spiral.ppm"};
 
         std::cout << "zoom    = " << zoom    << "\n";
         std::cout << "maxiter = " << maxiter << "\n";
