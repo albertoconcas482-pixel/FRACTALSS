@@ -1,5 +1,6 @@
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <exception>
 #include <iostream>
 #include <string>
@@ -18,16 +19,33 @@
  *
  * This file is intentionally kept flexible: viewport, resolution,
  * maxiter and color scheme are configured here and change frequently.
+ *
+ * maxiter is derived from zoom level using the empirical formula:
+ *   zoom   = 3.5 / (xmax - xmin)
+ *   maxiter = base * sqrt(2 * log2(zoom))
+ * where base = 200 is a tunable quality factor.
  */
 int main() {
     std::atomic<bool> timer_running {false};
     std::thread timer_thread;
 
     try {
-    fractal_pl plane(-0.835, -0.715, 0.065, 0.155, 12000, 9000);
-	  constexpr int maxiter {30000};
-        std::string name {"crazy"};
-    
+        // --- viewport: giunzione cardioide/bulbo-2, coda a (-1.786, 0) ---
+        constexpr double xmin  {-1.790};
+        constexpr double xmax  {-1.782};
+        constexpr double ymin  {-0.004};
+        constexpr double ymax  {  0.004};
+
+        // maxiter calibrated on zoom level
+        constexpr double base_quality {200.0};
+        const double zoom    { 3.5 / (xmax - xmin) };
+        const int    maxiter { static_cast<int>(base_quality * std::sqrt(2.0 * std::log2(zoom))) };
+
+        fractal_pl plane(xmin, xmax, ymin, ymax, 12000, 9000);
+        std::string name {"cardioide_tail"};
+
+        std::cout << "zoom   = " << zoom    << "\n";
+        std::cout << "maxiter= " << maxiter << "\n";
 
         const auto start_time {std::chrono::steady_clock::now()};
 
