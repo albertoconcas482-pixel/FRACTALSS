@@ -73,6 +73,12 @@ Optimizations are applied in order of expected impact, measured and verified wit
 - [ ] Partial symmetry exploitation (mirror points across the real axis when viewport permits)
 - [ ] Parallelization via index range partitioning on `fractal_pl::data`
 
+## Coloring Roadmap
+
+- [x] Black and white (inside/outside only)
+- [x] Escape time cycling (`crazy` scheme)
+- [ ] Smooth coloring — store final `z` value at escape in `fractal_el`, enabling normalized iteration count: `smooth = escapeiter - log2(log2(|z|))`. Produces continuous gradients instead of hard bands between iteration levels.
+
 ## Benchmarks
 
 The bottleneck is consistently `mandel_set::mandel_check`. Grid construction and rendering are negligible by comparison. Computation cost scales approximately as:
