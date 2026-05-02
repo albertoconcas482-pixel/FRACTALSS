@@ -14,21 +14,19 @@
 namespace mandel_pipeline {
 
     /*
-     * Classifies every point in the plane as inside or outside the
-     * Mandelbrot set, recording the escape iteration count.
+     * Classifies every point using: cardioid + bulb2 check, then
+     * iterate_with_period (cycle detection).
      *
-     * Pipeline order (fastest checks first):
-     *   1. is_in_cardioid     — O(1), catches most interior points
-     *   2. is_in_period2_bulb — O(1), catches the second-largest region
-     *   3. iterate_with_period — loop + cycle detection
-     *
-     * period_k controls how often the reference point is updated inside
-     * iterate_with_period. Passed explicitly so the benchmark can sweep
-     * different values without recompiling.
-     *
-     * Interior points (all three paths) write escapeiter = maxiter
-     * and inside = true. Contract is uniform for colorizers.
+     * period_k controls how often the reference point is updated.
+     * Passed explicitly so the benchmark can sweep different values.
      */
     void mandel_check(fractal_pl& plane, int maxiter, int period_k);
+
+    /*
+     * Same pipeline but uses plain iterate() instead of
+     * iterate_with_period — no cycle detection overhead.
+     * Used as the CARDIOID baseline in benchmarks.
+     */
+    void mandel_check_cardioid(fractal_pl& plane, int maxiter);
 
 } // namespace mandel_pipeline
