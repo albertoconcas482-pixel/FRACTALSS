@@ -1,6 +1,7 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <algorithm>
 #include <exception>
 #include <iostream>
 #include <string>
@@ -19,8 +20,11 @@
  *
  * maxiter is derived from zoom level using the empirical formula:
  *   zoom    = 3.5 / (xmax - xmin)
- *   maxiter = base * sqrt(2 * log2(zoom))
- * where base_quality is a tunable quality factor.
+ *   maxiter = base_quality * sqrt(2 * log2(zoom))
+ *
+ * zoom is clamped to a minimum of 2.0 so that log2 stays positive
+ * even at the standard full view (zoom = 1). A hard floor of 200
+ * iterations is also enforced.
  */
 int main() {
     std::atomic<bool> timer_running {false};
@@ -38,17 +42,19 @@ int main() {
         constexpr int render_height {1440};
 
         // maxiter calibrated on zoom level
+        // zoom clamped to >= 2.0 so log2 stays positive at full view
         constexpr double base_quality {200.0};
-        const double zoom    { 3.5 / (xmax - xmin) };
-        const int    maxiter { static_cast<int>(base_quality * std::sqrt(2.0 * std::log2(zoom))) };
+        const double zoom         { 3.5 / (xmax - xmin) };
+        const double zoom_clamped { std::max(zoom, 2.0) };
+        const int    maxiter      { std::max(200, static_cast<int>(base_quality * std::sqrt(2.0 * std::log2(zoom_clamped)))) };
 
         fractal_pl plane(xmin, xmax, ymin, ymax, render_width, render_height);
 
         const std::string color_scheme {"crazy"};
         const std::string output_file  {"mandelbrot_full.ppm"};
 
-        std::cout << "zoom    = " << zoom             << "\n";
-        std::cout << "maxiter = " << maxiter          << "\n";
+        std::cout << "zoom    = " << zoom    << "\n";
+        std::cout << "maxiter = " << maxiter << "\n";
         std::cout << "pixel   = " << render_width * render_height << "\n";
 
         const auto start_time {std::chrono::steady_clock::now()};
