@@ -28,12 +28,11 @@ void fractal_pl::init_grid() {
             // imag decreases with row: row 0 = ymax (top of viewport)
             const auto imag{ymax_ - static_cast<double>(row) * dy};
 
-            data_[i].c = {real, imag};
-            data_[i].inside = {};
+            data_[i].c         = {real, imag};
+            data_[i].inside    = {};
             data_[i].escapeiter = {};
-            data_[i].r = {};
-            data_[i].g = {};
-            data_[i].b = {};
+            // r, g, b removed: color is handled by render via an
+            // external buffer, not stored inside fractal_el.
         }
     }
 }
