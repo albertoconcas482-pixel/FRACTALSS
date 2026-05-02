@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <string>
 #include "fractal_pl.hpp"
 
@@ -6,14 +7,30 @@
  * Rendering module.
  *
  * Responsibilities:
- *   - render_color: assigns RGB values to each point in the plane
- *                   by delegating to color_registry
- *   - render_to_ppm: writes the colored plane to a PPM image file
+ *   - render_color: reads the plane, delegates to color_registry,
+ *                   and returns the RGB buffer as a unique_ptr.
+ *                   The caller owns the buffer.
  *
- * Both methods operate on a fractal_pl after mandel_check has been run.
+ *   - render_to_png: writes the RGB buffer to a PNG file.
+ *                    Receives const fractal_pl& only to read nx/ny
+ *                    (image dimensions). The buffer is passed as a
+ *                    raw pointer because stbi_write_png is a C API.
+ *
+ * Typical usage in main:
+ *
+ *   auto buffer = render::render_color(plane, "crazy");
+ *   render::render_to_png(plane, buffer.get(), "output.png");
  */
 class render {
 public:
-    static void render_color(fractal_pl& plane, const std::string& color_type);
-    static void render_to_ppm(const fractal_pl& plane, const std::string& filename);
+    static std::unique_ptr<unsigned char[]> render_color(
+        const fractal_pl& plane,
+        const std::string& color_type
+    );
+
+    static void render_to_png(
+        const fractal_pl& plane,
+        const unsigned char* buffer,
+        const std::string& filename
+    );
 };
