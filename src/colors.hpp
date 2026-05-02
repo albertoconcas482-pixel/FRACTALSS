@@ -57,7 +57,9 @@ public:
         auto buffer{std::make_unique<unsigned char[]>(n * 3)};
 
         for (std::size_t i{}; i < n; ++i) {
-            const unsigned char value{data[i].inside ? 0u : 255u};
+            // = instead of {} avoids narrowing warning: 0u/255u are unsigned int,
+            // the implicit truncation to unsigned char is intentional and safe.
+            const unsigned char value = data[i].inside ? 0u : 255u;
             buffer[i * 3    ] = value;
             buffer[i * 3 + 1] = value;
             buffer[i * 3 + 2] = value;
