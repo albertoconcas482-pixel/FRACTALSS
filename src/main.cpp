@@ -47,7 +47,7 @@ int main() {
 
         // maxiter calibrated on zoom level
         // zoom clamped to >= 2.0 so log2 stays positive at full view
-        constexpr double base_quality {200.0};
+        constexpr double base_quality {1000.0};
         const double zoom         { 3.5 / (xmax - xmin) };
         const double zoom_clamped { std::max(zoom, 2.0) };
         const int    maxiter      { std::max(200, static_cast<int>(base_quality * std::sqrt(2.0 * std::log2(zoom_clamped)))) };
