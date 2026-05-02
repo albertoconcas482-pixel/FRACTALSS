@@ -1,5 +1,6 @@
 #include "render.hpp"
 #include "colors.hpp"
+#include <filesystem>
 #include <stdexcept>
 
 // stb_image_write implementation must be compiled exactly once,
@@ -21,14 +22,24 @@ void render::render_to_png(
     const unsigned char* buffer,
     const std::string& filename)
 {
+    // Create the output directory next to the executable if it does
+    // not exist yet. std::filesystem::create_directories is a no-op
+    // when the directory already exists.
+    // NOTE: the path is relative to the working directory at runtime
+    // (typically the build folder). A future improvement could make
+    // this configurable or relative to the project root.
+    const std::filesystem::path output_dir{"images"};
+    std::filesystem::create_directories(output_dir);
+
+    const std::filesystem::path output_path{output_dir / filename};
+
     const int width  { static_cast<int>(plane.nx()) };
     const int height { static_cast<int>(plane.ny()) };
     constexpr int channels { 3 };
 
-    // stride = 0 tells stbi to compute it automatically as width * channels.
-    // No padding between rows, buffer is tightly packed.
+    // stride = width * channels: rows are tightly packed, no padding.
     const int result { stbi_write_png(
-        filename.c_str(),
+        output_path.string().c_str(),
         width, height,
         channels,
         buffer,
@@ -36,6 +47,6 @@ void render::render_to_png(
     };
 
     if (result == 0) {
-        throw std::runtime_error{"stbi_write_png: cannot write output file"};
+        throw std::runtime_error{"stbi_write_png: cannot write output file: " + output_path.string()};
     }
 }

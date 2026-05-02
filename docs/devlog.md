@@ -97,6 +97,35 @@ La macchina ha 32 GB di RAM — allocazione impossibile.
 
 ---
 
+## 2 Maggio 2026 — PNG buffer pipeline
+
+### Refactoring del sistema di output: da PPM a PNG
+
+La pipeline di output è stata completamente riscritta per produrre file PNG invece di PPM.
+
+**Motivazione:** un render 1920×1440 in PPM P6 pesa ~8 MB. Lo stesso render in PNG scende a ~1–3 MB grazie alla compressione lossless. Per risoluzioni alte (12000×9000 e oltre) la differenza diventa sostanziale.
+
+**Libreria usata:** `stb_image_write.h` (v1.16) — header-only, public domain, zero dipendenze esterne. Il file è vendorizzato in `src/stb_image_write.h`. La macro `STB_IMAGE_WRITE_IMPLEMENTATION` viene definita una sola volta in `render.cpp`.
+
+**Architettura del buffer:**
+
+Il cambiamento più importante riguarda dove vivono i dati RGB. In precedenza i valori `r`, `g`, `b` erano campi di `fractal_el` — il colore era responsabilità del punto stesso. Ora:
+
+- `fractal_el` contiene solo dati di calcolo: `c`, `inside`, `escapeiter`
+- le color function (in `colors.hpp`) allocano un buffer `unique_ptr<unsigned char[]>` di `nx*ny*3` byte, lo riempiono e lo restituiscono al chiamante
+- `render::render_color` restituisce il buffer al `main`, che ne è proprietario
+- `render::render_to_png` riceve il buffer come raw pointer (`const unsigned char*`) — interfaccia C richiesta da `stbi_write_png`
+
+Questo pattern — *owning type internamente, raw pointer verso le API C* — è idiomatico in C++ moderno.
+
+**Cartella di output `images/`:**
+
+`render_to_png` crea automaticamente una cartella `images/` nella working directory (tipicamente la cartella di build) prima di scrivere il file. Usa `std::filesystem::create_directories`, che è no-op se la cartella esiste già.
+
+> **TODO — miglioramento futuro:** il path `images/` è attualmente relativo alla working directory a runtime (la cartella di build). Sarebbe più conveniente renderlo relativo alla root del progetto, o configurabile tramite parametro. Da valutare quando si introduce una struttura di configurazione del render.
+
+---
+
 ## Roadmap — Prossimi step
 
 ### Ottimizzazioni kernel
@@ -111,7 +140,7 @@ La macchina ha 32 GB di RAM — allocazione impossibile.
 
 ### Output
 
-- **PNG nativo** — integrare `stb_image_write.h` (header-only, zero dipendenze esterne) per scrivere direttamente in PNG. Una griglia 12000×9000 pesa ~10–30 MB in PNG contro ~300 MB in P6. Il PPM rimane come metodo di debug.
+- **Path configurabile per `images/`** — attualmente la cartella di output è relativa alla working directory a runtime. Renderla configurabile o relativa alla root del progetto.
 
 ### Note progettuali
 
