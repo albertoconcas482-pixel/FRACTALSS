@@ -33,19 +33,23 @@ int main() {
         constexpr double ymin  {-1.25};
         constexpr double ymax  { 1.25};
 
+        // --- resolution: 2K native (2560x1440) ---
+        constexpr int render_width  {2560};
+        constexpr int render_height {1440};
+
         // maxiter calibrated on zoom level
         constexpr double base_quality {200.0};
         const double zoom    { 3.5 / (xmax - xmin) };
         const int    maxiter { static_cast<int>(base_quality * std::sqrt(2.0 * std::log2(zoom))) };
 
-        fractal_pl plane(xmin, xmax, ymin, ymax, 12000, 9000);
+        fractal_pl plane(xmin, xmax, ymin, ymax, render_width, render_height);
 
         const std::string color_scheme {"crazy"};
         const std::string output_file  {"mandelbrot_full.ppm"};
 
-        std::cout << "zoom    = " << zoom    << "\n";
-        std::cout << "maxiter = " << maxiter << "\n";
-        std::cout << "pixel   = " << 12000 * 9000 << "\n";
+        std::cout << "zoom    = " << zoom             << "\n";
+        std::cout << "maxiter = " << maxiter          << "\n";
+        std::cout << "pixel   = " << render_width * render_height << "\n";
 
         const auto start_time {std::chrono::steady_clock::now()};
 
