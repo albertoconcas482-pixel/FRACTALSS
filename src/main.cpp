@@ -31,11 +31,11 @@ int main() {
     std::thread timer_thread;
 
     try {
-        // --- viewport: insieme standard, visione completa ---
-        constexpr double xmin  {-2.5};
-        constexpr double xmax  { 1.0};
-        constexpr double ymin  {-1.25};
-        constexpr double ymax  { 1.25};
+        // --- viewport: cardioide/bulbo-2 junction zone ---
+        constexpr double xmin  {-1.790};
+        constexpr double xmax  {-1.782};
+        constexpr double ymin  {-0.004};
+        constexpr double ymax  { 0.004};
 
         // --- resolution: 2K native (2560x1440) ---
         constexpr int render_width  {2560};
