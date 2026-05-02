@@ -1,30 +1,41 @@
 #include "render.hpp"
 #include "colors.hpp"
-#include <fstream>
 #include <stdexcept>
 
-void render::render_color(fractal_pl& plane, const std::string& color_type) {
-    // Delegates color assignment to color_registry based on color_type name
-    color_registry::apply_color(color_type, plane);
+// stb_image_write implementation must be compiled exactly once,
+// in this translation unit only — never in a header.
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
+std::unique_ptr<unsigned char[]> render::render_color(
+    const fractal_pl& plane,
+    const std::string& color_type)
+{
+    // Delegate entirely to color_registry: it allocates the buffer,
+    // fills it with RGB triplets and returns ownership to the caller.
+    return color_registry::apply_color(color_type, plane);
 }
 
-void render::render_to_ppm(const fractal_pl& plane, const std::string& filename) {
-    std::ofstream out{filename, std::ios::binary};
+void render::render_to_png(
+    const fractal_pl& plane,
+    const unsigned char* buffer,
+    const std::string& filename)
+{
+    const int width  { static_cast<int>(plane.nx()) };
+    const int height { static_cast<int>(plane.ny()) };
+    constexpr int channels { 3 };
 
-    if (!out) {
-        throw std::runtime_error{"cannot open output file"};
-    }
+    // stride = 0 tells stbi to compute it automatically as width * channels.
+    // No padding between rows, buffer is tightly packed.
+    const int result { stbi_write_png(
+        filename.c_str(),
+        width, height,
+        channels,
+        buffer,
+        width * channels)
+    };
 
-    // PPM header: format P6 (binary RGB), width, height, max color value
-    out << "P6\n";
-    out << plane.nx() << ' ' << plane.ny() << '\n';
-    out << "255\n";
-
-    const auto& data{plane.data()};
-
-    // Write one RGB triplet per pixel as raw bytes
-    for (const auto& el : data) {
-        const unsigned char rgb[3]{el.r, el.g, el.b};
-        out.write(reinterpret_cast<const char*>(rgb), 3);
+    if (result == 0) {
+        throw std::runtime_error{"stbi_write_png: cannot write output file"};
     }
 }

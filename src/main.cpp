@@ -16,7 +16,7 @@
  *
  *   1. fractal_pl  — build the complex plane grid
  *   2. mandel_set  — compute Mandelbrot membership for each point
- *   3. render      — colorize and write the result to a PPM file
+ *   3. render      — colorize and write the result to a PNG file
  *
  * maxiter is derived from zoom level using the empirical formula:
  *   zoom    = 3.5 / (xmax - xmin)
@@ -55,7 +55,7 @@ int main() {
         fractal_pl plane(xmin, xmax, ymin, ymax, render_width, render_height);
 
         const std::string color_scheme {"crazy"};
-        const std::string output_file  {"mandelbrot_full.ppm"};
+        const std::string output_file  {"mandelbrot_full.png"};
 
         std::cout << "zoom    = " << zoom    << "\n";
         std::cout << "maxiter = " << maxiter << "\n";
@@ -83,8 +83,12 @@ int main() {
         });
 
         mandel_set::mandel_check(plane, maxiter);
-        render::render_color(plane, color_scheme);
-        render::render_to_ppm(plane, output_file);
+
+        // render_color allocates and fills the RGB buffer, returns ownership.
+        // render_to_png reads it as a raw pointer (stbi C API) then buffer
+        // is automatically released at end of scope.
+        auto buffer = render::render_color(plane, color_scheme);
+        render::render_to_png(plane, buffer.get(), output_file);
 
         timer_running = false;
         if (timer_thread.joinable()) {
