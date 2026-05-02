@@ -18,13 +18,17 @@ namespace mandel_pipeline {
      * Mandelbrot set, recording the escape iteration count.
      *
      * Pipeline order (fastest checks first):
-     *   1. is_in_cardioid   — O(1), catches most interior points
+     *   1. is_in_cardioid     — O(1), catches most interior points
      *   2. is_in_period2_bulb — O(1), catches the second-largest region
-     *   3. iterate          — full iteration loop for remaining points
+     *   3. iterate_with_period — loop + cycle detection
+     *
+     * period_k controls how often the reference point is updated inside
+     * iterate_with_period. Passed explicitly so the benchmark can sweep
+     * different values without recompiling.
      *
      * Interior points (all three paths) write escapeiter = maxiter
-     * and inside = true. This keeps the contract uniform for colorizers.
+     * and inside = true. Contract is uniform for colorizers.
      */
-    void mandel_check(fractal_pl& plane, int maxiter);
+    void mandel_check(fractal_pl& plane, int maxiter, int period_k);
 
 } // namespace mandel_pipeline
