@@ -25,20 +25,24 @@
  * zoom is clamped to a minimum of 2.0 so that log2 stays positive
  * even at the standard full view (zoom = 1). A hard floor of 200
  * iterations is also enforced.
+ *
+ * Aspect ratio rule: (xmax - xmin) / (ymax - ymin) must equal
+ * render_width / render_height to avoid geometric distortion.
+ * Current: 0.008 / 0.006 = 4/3 = 1920/1440.
  */
 int main() {
     std::atomic<bool> timer_running {false};
     std::thread timer_thread;
 
     try {
-        // --- viewport: cardioide/bulbo-2 junction zone ---
+        // --- viewport: cardioide/bulbo-2 junction zone, 4:3 aspect ratio ---
         constexpr double xmin  {-1.790};
         constexpr double xmax  {-1.782};
-        constexpr double ymin  {-0.004};
-        constexpr double ymax  { 0.004};
+        constexpr double ymin  {-0.003};
+        constexpr double ymax  { 0.003};
 
-        // --- resolution: 2K native (2560x1440) ---
-        constexpr int render_width  {2560};
+        // --- resolution: 4:3 at 2K area (1920x1440) ---
+        constexpr int render_width  {1920};
         constexpr int render_height {1440};
 
         // maxiter calibrated on zoom level
