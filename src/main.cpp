@@ -8,15 +8,15 @@
 #include <thread>
 
 #include "fractal_pl.hpp"
-#include "mandel_set.hpp"
+#include "mandel_pipeline.hpp"
 #include "render.hpp"
 
 /*
  * Entry point. Orchestrates the rendering pipeline:
  *
- *   1. fractal_pl  — build the complex plane grid
- *   2. mandel_set  — compute Mandelbrot membership for each point
- *   3. render      — colorize and write the result to a PNG file
+ *   1. fractal_pl       — build the complex plane grid
+ *   2. mandel_pipeline  — classify each point (cardioid / bulb2 / iterate)
+ *   3. render           — colorize and write the result to a PNG file
  *
  * maxiter is derived from zoom level using the empirical formula:
  *   zoom    = 3.5 / (xmax - xmin)
@@ -31,7 +31,7 @@
  * Current: 0.008 / 0.006 = 4/3 = 1920/1440.
  */
 int main() {
-    std::atomic<bool> timer_running {false};
+    std::atomic<bool> timer_running{false};
     std::thread timer_thread;
 
     try {
@@ -45,74 +45,63 @@ int main() {
         constexpr int render_width  {1920};
         constexpr int render_height {1440};
 
-        // maxiter calibrated on zoom level
-        // zoom clamped to >= 2.0 so log2 stays positive at full view
-        constexpr double base_quality {1000.0};
-        const double zoom         { 3.5 / (xmax - xmin) };
-        const double zoom_clamped { std::max(zoom, 2.0) };
-        const int    maxiter      { std::max(200, static_cast<int>(base_quality * std::sqrt(2.0 * std::log2(zoom_clamped)))) };
+        // maxiter calibrated on zoom level.
+        // zoom clamped to >= 2.0 so log2 stays positive at full view.
+        constexpr double base_quality{1000.0};
+        const double zoom        {3.5 / (xmax - xmin)};
+        const double zoom_clamped{std::max(zoom, 2.0)};
+        const int    maxiter     {std::max(200, static_cast<int>(base_quality * std::sqrt(2.0 * std::log2(zoom_clamped))))};
 
         fractal_pl plane(xmin, xmax, ymin, ymax, render_width, render_height);
 
-        const std::string color_scheme {"crazy"};
-        const std::string output_file  {"mandelbrot_full.png"};
+        const std::string color_scheme{"crazy"};
+        const std::string output_file {"mandelbrot_full.png"};
 
         std::cout << "zoom    = " << zoom    << "\n";
         std::cout << "maxiter = " << maxiter << "\n";
         std::cout << "pixel   = " << render_width * render_height << "\n";
 
-        const auto start_time {std::chrono::steady_clock::now()};
-
+        const auto start_time{std::chrono::steady_clock::now()};
         timer_running = true;
 
         timer_thread = std::thread([&timer_running, &start_time]() {
             using namespace std::chrono_literals;
-
             while (timer_running) {
-                const auto now {std::chrono::steady_clock::now()};
-                const auto elapsed_seconds {
+                const auto now{std::chrono::steady_clock::now()};
+                const auto elapsed_seconds{
                     std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count()
                 };
-
                 std::cout << "\rTempo di generazione: "
                           << elapsed_seconds
                           << " s" << std::flush;
-
                 std::this_thread::sleep_for(1s);
             }
         });
 
-        mandel_set::mandel_check(plane, maxiter);
+        mandel_pipeline::mandel_check(plane, maxiter);
 
         // render_color allocates and fills the RGB buffer, returns ownership.
         // render_to_png reads it as a raw pointer (stbi C API) then buffer
         // is automatically released at end of scope.
-        auto buffer = render::render_color(plane, color_scheme);
+        auto buffer{render::render_color(plane, color_scheme)};
         render::render_to_png(plane, buffer.get(), output_file);
 
         timer_running = false;
-        if (timer_thread.joinable()) {
-            timer_thread.join();
-        }
+        if (timer_thread.joinable()) timer_thread.join();
 
-        const auto end_time {std::chrono::steady_clock::now()};
-        const auto total_seconds {
+        const auto end_time{std::chrono::steady_clock::now()};
+        const auto total_seconds{
             std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count()
         };
 
         std::cout << "\rTempo di generazione: "
                   << total_seconds
                   << " s\n";
-
         std::cout << "Render completato: " << output_file << "\n";
     }
     catch (const std::exception& e) {
         timer_running = false;
-
-        if (timer_thread.joinable()) {
-            timer_thread.join();
-        }
-
+        if (timer_thread.joinable()) timer_thread.join();
         std::cerr << "\nErrore: " << e.what() << '\n';
         return 1;
     }
