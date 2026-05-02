@@ -6,6 +6,7 @@ add_executable(mandelbrot
     src/main.cpp
     src/fractal_pl.cpp
     src/mandel_set.cpp
+    src/mandel_pipeline.cpp
     src/render.cpp
 )
 
