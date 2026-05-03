@@ -12,7 +12,7 @@
 #include "mandel_set.hpp"
 #include "render.hpp"
 
-// ─── benchmark mode ─────────────────────────────────────────────────────────
+// ─── benchmark mode ──────────────────────────────────────────────────────────
 // Set to 1 to run a CSV benchmark sweep instead of a normal render.
 // Output: mode,nx,ny,zoom,maxiter,period_k,plane_ms,mandel_ms,total_ms
 //
@@ -24,9 +24,23 @@
 // period_k is always 0 for this branch (no period-checking algorithm).
 #define BENCHMARK_MODE 0
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── render zoom mode ────────────────────────────────────────────────────────
+// Set to 1 to render one PNG per zoom level for visual inspection.
+//
+// Pipeline: mandel_set::mandel_check (cardioid+bulb2 early exit + plain iterate,
+//           all inside the monolithic method — no period-check overhead).
+//           Uses "crazy" color scheme.
+//
+// Output files: /home/alberto/Documents/C++/Fractals/images/buff_bench_FHD_N.png
+//               where N = 1..6 matching bench_configs order (zoom 16 → 16384).
+//
+// Timing: plane_ms and mandel_ms are measured and printed to stdout per level.
+//         Render + write happen after the measurement window closes.
+//
+// BENCHMARK_MODE and RENDER_ZOOM_MODE are mutually exclusive — set only one to 1.
+#define RENDER_ZOOM_MODE 0
 
-#if BENCHMARK_MODE
+// ─────────────────────────────────────────────────────────────────────────────
 
 struct BenchConfig {
     double      xmin, xmax, ymin, ymax;
@@ -34,23 +48,26 @@ struct BenchConfig {
     std::size_t zoom;
 };
 
+// 6 zoom levels centred on cx=-1.786440, cy=0.0
+// width  = 3.5 / zoom,  height = width * (9/16)
+// maxiter = max(200, floor(1000 * sqrt(2 * log2(zoom))))
+constexpr std::array<BenchConfig, 6> bench_configs {{
+    { -1.895815000000000, -1.677065000000000, -0.061523437500000,  0.061523437500000,  2828, 16    },
+    { -1.813783750000000, -1.759096250000000, -0.015380859375000,  0.015380859375000,  3464, 64    },
+    { -1.793275937500000, -1.779604062500000, -0.003845214843750,  0.003845214843750,  4000, 256   },
+    { -1.788148984375000, -1.784731015625000, -0.000961303710938,  0.000961303710938,  4472, 1024  },
+    { -1.786867246093750, -1.786012753906250, -0.000240325927734,  0.000240325927734,  4898, 4096  },
+    { -1.786546811523438, -1.786333188476563, -0.000060081481934,  0.000060081481934,  5291, 16384 },
+}};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+#if BENCHMARK_MODE
+
 int main() {
     try {
-        // FHD resolution — aspect ratio 16:9
         constexpr std::size_t nx {1920};
         constexpr std::size_t ny {1080};
-
-        // 6 zoom levels centred on cx=-1.786440, cy=0.0
-        // xmin/xmax/ymin/ymax pre-calculated: width=3.5/zoom, height=width*(9/16)
-        // maxiter = max(200, floor(1000 * sqrt(2 * log2(zoom))))
-        constexpr std::array<BenchConfig, 6> bench_configs {{
-            { -1.895815000000000, -1.677065000000000, -0.061523437500000,  0.061523437500000,  2828, 16    },
-            { -1.813783750000000, -1.759096250000000, -0.015380859375000,  0.015380859375000,  3464, 64    },
-            { -1.793275937500000, -1.779604062500000, -0.003845214843750,  0.003845214843750,  4000, 256   },
-            { -1.788148984375000, -1.784731015625000, -0.000961303710938,  0.000961303710938,  4472, 1024  },
-            { -1.786867246093750, -1.786012753906250, -0.000240325927734,  0.000240325927734,  4898, 4096  },
-            { -1.786546811523438, -1.786333188476563, -0.000060081481934,  0.000060081481934,  5291, 16384 },
-        }};
 
         using clock_type = std::chrono::steady_clock;
 
@@ -87,6 +104,82 @@ int main() {
 
     return 0;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+#elif RENDER_ZOOM_MODE
+
+/*
+ * Renders one PNG per zoom level for visual inspection.
+ *
+ * Pipeline: mandel_set::mandel_check (cardioid + bulb-2 early exit + plain
+ * iterate, monolithic method). Matches the MAIN label used in BENCHMARK_MODE.
+ *
+ * Timing: plane construction and mandel computation are measured separately.
+ * Render + write happen outside the measurement window so they do not
+ * contaminate mandel_ms.
+ *
+ * Output: /home/alberto/Documents/C++/Fractals/images/buff_bench_FHD_N.png
+ *         N = 1..6, matching bench_configs order (zoom 16 → 16384).
+ */
+int main() {
+    try {
+        constexpr std::size_t nx {1920};
+        constexpr std::size_t ny {1080};
+
+        const std::string color_scheme  {"crazy"};
+        const std::string images_dir    {"/home/alberto/Documents/C++/Fractals/images/"};
+
+        using clock_type = std::chrono::steady_clock;
+
+        for (std::size_t idx = 0; idx < bench_configs.size(); ++idx) {
+            const auto& cfg = bench_configs[idx];
+
+            const std::string filename {
+                images_dir + "buff_bench_FHD_" + std::to_string(idx + 1) + ".png"
+            };
+
+            std::cout << "[" << (idx + 1) << "/6] zoom=" << cfg.zoom
+                      << "  maxiter=" << cfg.maxiter << "\n";
+
+            // ── measure: plane construction ───────────────────────────────────
+            const auto plane_start  {clock_type::now()};
+            fractal_pl plane {cfg.xmin, cfg.xmax, cfg.ymin, cfg.ymax, nx, ny};
+            const auto plane_end    {clock_type::now()};
+
+            // ── measure: mandel computation (monolithic pipeline) ─────────────
+            const auto mandel_start {clock_type::now()};
+            mandel_set::mandel_check(plane, cfg.maxiter);
+            const auto mandel_end   {clock_type::now()};
+
+            const auto plane_ms  {std::chrono::duration_cast<std::chrono::milliseconds>(
+                plane_end  - plane_start).count()};
+            const auto mandel_ms {std::chrono::duration_cast<std::chrono::milliseconds>(
+                mandel_end - mandel_start).count()};
+
+            std::cout << "  plane_ms  = " << plane_ms  << " ms\n";
+            std::cout << "  mandel_ms = " << mandel_ms << " ms\n";
+
+            // ── outside measurement window: render + write ────────────────────
+            render::render_color(plane, color_scheme);
+            render::render_to_ppm(
+                plane,
+                std::string("/home/alberto/Documents/C++/Fractals/images/buff_bench_FHD_")
+                    + std::to_string(idx + 1) + ".ppm"
+            );
+
+            std::cout << "  -> " << filename << "  done\n\n";
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Errore: " << e.what() << '\n';
+        return 1;
+    }
+
+    return 0;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 #else // ── normal render mode ──────────────────────────────────────────────────
 
@@ -194,4 +287,4 @@ int main() {
     return 0;
 }
 
-#endif // BENCHMARK_MODE
+#endif // BENCHMARK_MODE / RENDER_ZOOM_MODE / normal
