@@ -118,3 +118,146 @@ La macchina ha 32 GB di RAM — allocazione impossibile.
 **Relazione risoluzione/iterazioni** — i due parametri sono indipendenti ma si moltiplicano nel costo. La regola: `maxiter` dovrebbe crescere con il livello di zoom, non linearmente. Per viewport a zoom moderato, 200–400 iterazioni sono già più che sufficienti. Aumentare `maxiter` oltre il necessario non aggiunge dettaglio visibile ma moltiplica il tempo di calcolo.
 
 **Colori in `unsigned char`** — per colorazioni basate su lookup diretto di `escapeiter`, `unsigned char` è sufficiente e corretto. Il discorso dei float diventa rilevante solo con smooth coloring, dove l'indice nella palette è continuo e richiede interpolazione.
+
+---
+
+## 3 Maggio 2026 — Progettazione benchmark MAIN vs CARDIOID
+
+### Obiettivo
+
+Confrontare le prestazioni di `mandel_set::mandel_check` (branch **main**) con
+`mandel_pipeline::mandel_check_cardioid` (branch **refactor/png-buffer-pipeline**).
+Le due implementazioni applicano lo **stesso algoritmo matematico** ma con
+architetture diverse:
+
+- **main** — loop di visita del piano, check cardioide/bulbo-2 e iterazione pura
+  sono tutti dentro un unico metodo di `mandel_set`.
+- **refactor** — il loop di visita sta in `mandel_pipeline`, che delega il calcolo
+  a funzioni statiche di `mandel_set` (`is_in_cardioid`, `is_in_period2_bulb`, `iterate`).
+
+Il benchmark verifica se la separazione architetturale introduce overhead misurabile
+a parità di logica computazionale.
+
+### Schema CSV
+
+Entrambe le branch producono un CSV con schema identico:
+
+```
+mode, nx, ny, maxiter, period_k, plane_ms, mandel_ms, total_ms
+```
+
+- `mode` — `MAIN` (branch main) oppure `CARDIOID` (branch refactor)
+- `plane_ms` — tempo di costruzione del piano complesso
+- `mandel_ms` — tempo di calcolo Mandelbrot (**metrica principale**)
+- `total_ms` — somma dei due
+- `period_k` — sempre `0` in questo confronto (nessun cycle-detection)
+
+### Disegno sperimentale
+
+**Centro fisso** — ricavato esplorando mandelbrot.site e convergendo progressivamente
+sulla giunzione cardioide/bulbo-2, una delle zone computazionalmente più dense:
+
+```
+cx = -1.7864402575360145
+cy = -9.677023626863956e-10   (≈ 0)
+```
+
+Scegliere un punto ad alta densità di bordo garantisce che `mandel_ms` non sia
+falsato da zone vuote o puramente interne, rendendo i risultati comparabili
+tra un livello di zoom e l'altro.
+
+**Intorno per ogni zoom:**
+
+```
+width  = 3.5 / zoom
+height = width * (ny / nx)      ← rispetta l'aspect ratio della risoluzione
+xmin   = cx - width  / 2
+xmax   = cx + width  / 2
+ymin   = cy - height / 2
+ymax   = cy + height / 2
+```
+
+**Calibrazione maxiter** — derivata dallo zoom con la stessa formula del renderer,
+nessun valore arbitrario:
+
+```
+maxiter = max(200, floor(1000 * sqrt(2 * log2(max(zoom, 2)))))
+```
+
+### Risoluzioni
+
+Proporzioni reali di ogni formato (non quadrate):
+
+| Nome   | nx   | ny   | Contesto                  |
+|--------|------|------|---------------------------|
+| FHD    | 1920 | 1080 | Full HD, schermo standard |
+| 2K     | 2560 | 1440 | QHD, monitor pro/gaming   |
+| 4K     | 3840 | 2160 | UHD, schermo 4K           |
+| A4 300 | 2480 | 3508 | Stampa A4 qualità pro     |
+| A3 300 | 3508 | 4961 | Stampa A3 qualità pro     |
+
+### Livelli di zoom
+
+10 livelli logaritmici, ognuno con `maxiter` calcolato dalla formula:
+
+| # | zoom      | maxiter | width (xmax-xmin) |
+|---|-----------|---------|-------------------|
+| 1 | 16        | 2828    | 2.1875e-01        |
+| 2 | 64        | 3464    | 5.4688e-02        |
+| 3 | 256       | 4000    | 1.3672e-02        |
+| 4 | 1024      | 4472    | 3.4180e-03        |
+| 5 | 4096      | 4898    | 8.5449e-04        |
+| 6 | 16384     | 5291    | 2.1362e-04        |
+| 7 | 65536     | 5656    | 5.3406e-05        |
+| 8 | 524288    | 6164    | 6.6757e-06        |
+| 9 | 2097152   | 6480    | 1.6689e-06        |
+|10 | 134217728 | 7348    | 2.6077e-08        |
+
+**Dimensione totale dataset:** 2 modalità × 5 risoluzioni × 10 zoom = **100 righe**.
+
+### Coordinate originali da mandelbrot.site
+
+Usate per ricavare il centro stabile per convergenza progressiva:
+
+| z viewer | re                     | im                  |
+|----------|------------------------|---------------------|
+| 4        | -1.30078125            | -0.0693359375       |
+| 10       | -1.778961181640625     | -0.0015411376953125 |
+| 16       | -1.786264419555664     | -0.0000045299530029 |
+| 21       | -1.7864390760660172    | -6.482e-7           |
+| 27       | -1.7864402558188885    | -1.502e-8           |
+| 31       | -1.7864402575360145    | -9.677e-10          |
+
+### Stato implementazione
+
+- [x] `BENCHMARK_MODE` aggiunto a `src/main.cpp` della branch **main**
+      (commit `006cc43` — label `MAIN`, schema CSV identico alla refactor)
+- [x] `BENCHMARK_MODE` già presente in `src/main.cpp` della branch
+      **refactor/png-buffer-pipeline** (label `CARDIOID`)
+- [ ] Aggiornare entrambi i `main.cpp` con le 5 risoluzioni reali
+      e i 10 livelli di zoom descritti sopra
+- [ ] Eseguire il benchmark su entrambe le branch e raccogliere i CSV
+- [ ] Scrivere lo script Python di analisi (`analysis/plot_benchmark.py`)
+
+### Come eseguire il benchmark
+
+```bash
+# 1. Scegliere la branch, impostare BENCHMARK_MODE 1, compilare in Release
+git checkout main          # oppure: refactor/png-buffer-pipeline
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make
+
+# 2. Lanciare e salvare il CSV
+./mandelbrot > ../benchmark_main.csv      # oppure benchmark_cardioid.csv
+
+# 3. Ripristinare BENCHMARK_MODE 0 dopo il benchmark
+```
+
+### Analisi prevista
+
+Lo script Python di analisi dovrà:
+- Leggere i due CSV e unirli
+- Normalizzare `mandel_ms` per pixel totali (`nx * ny`) → `ms_per_pixel`
+- Plottare `ms_per_pixel` vs `zoom` per ogni risoluzione
+- Sovrapporre `MAIN` e `CARDIOID` sullo stesso grafico per confronto diretto
