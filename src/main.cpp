@@ -6,10 +6,79 @@
 #include <iostream>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "fractal_pl.hpp"
 #include "mandel_set.hpp"
 #include "render.hpp"
+
+// ─── benchmark mode ─────────────────────────────────────────────────────────
+// Set to 1 to run a CSV benchmark sweep instead of a normal render.
+// Output: mode,nx,ny,maxiter,period_k,plane_ms,mandel_ms,total_ms
+//
+//   MAIN — cardioid+bulb2 check + plain iterate(), all inside mandel_set::mandel_check()
+//
+// period_k is always 0 for this branch (no period-checking algorithm).
+#define BENCHMARK_MODE 0
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+#if BENCHMARK_MODE
+
+int main() {
+    try {
+        // Same viewport and sweep values as refactor/png-buffer-pipeline
+        // so the two CSVs are directly comparable.
+        constexpr double xmin{-0.80};
+        constexpr double xmax{-0.70};
+        constexpr double ymin{ 0.05};
+        constexpr double ymax{ 0.15};
+
+        const std::vector<std::size_t> resolution_values{2000, 5000, 8000, 10000};
+        const std::vector<int>         maxiter_values   {50, 100, 200, 400, 800};
+
+        using clock_type = std::chrono::steady_clock;
+
+        std::cout << "mode,nx,ny,maxiter,period_k,plane_ms,mandel_ms,total_ms\n";
+
+        for (std::size_t resolution : resolution_values) {
+            for (int maxiter : maxiter_values) {
+                const auto total_start{clock_type::now()};
+
+                const auto plane_start{clock_type::now()};
+                fractal_pl plane{xmin, xmax, ymin, ymax, resolution, resolution};
+                const auto plane_end{clock_type::now()};
+
+                const auto mandel_start{clock_type::now()};
+                mandel_set::mandel_check(plane, maxiter);
+                const auto mandel_end{clock_type::now()};
+
+                const auto total_end{clock_type::now()};
+
+                const auto plane_ms{std::chrono::duration_cast<std::chrono::milliseconds>(
+                    plane_end - plane_start).count()};
+                const auto mandel_ms{std::chrono::duration_cast<std::chrono::milliseconds>(
+                    mandel_end - mandel_start).count()};
+                const auto total_ms{std::chrono::duration_cast<std::chrono::milliseconds>(
+                    total_end - total_start).count()};
+
+                std::cout << "MAIN,"
+                          << resolution << ',' << resolution << ','
+                          << maxiter << ",0,"
+                          << plane_ms << ',' << mandel_ms << ','
+                          << total_ms << '\n';
+            }
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Errore: " << e.what() << '\n';
+        return 1;
+    }
+
+    return 0;
+}
+
+#else // ── normal render mode ──────────────────────────────────────────────────
 
 /*
  * Entry point. Orchestrates the rendering pipeline:
@@ -115,3 +184,5 @@ int main() {
 
     return 0;
 }
+
+#endif // BENCHMARK_MODE
