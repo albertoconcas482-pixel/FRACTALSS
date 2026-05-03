@@ -12,7 +12,7 @@
 #include "mandel_pipeline.hpp"
 #include "render.hpp"
 
-// ─── benchmark mode ─────────────────────────────────────────────────────────
+// ─── benchmark mode ──────────────────────────────────────────────────────────
 // Set to 1 to run a CSV benchmark sweep instead of a normal render.
 // Output: mode,nx,ny,zoom,maxiter,period_k,plane_ms,mandel_ms,total_ms
 //
@@ -24,13 +24,18 @@
 // maxiter derived per-level from: max(200, floor(1000 * sqrt(2 * log2(zoom))))
 #define BENCHMARK_MODE 0
 
-// ─── period_k ──────────────────────────────────────────────────────────────
-// Used in normal render mode only.
+// ─── render zoom mode ────────────────────────────────────────────────────────
+// Set to 1 to render one PNG per zoom level for visual inspection.
+// Files are saved as zoom_16.png, zoom_64.png, ... zoom_16384.png
+// Uses mandel_check (period_k=20) + "crazy" color scheme.
+// BENCHMARK_MODE and RENDER_ZOOM_MODE are mutually exclusive — set only one to 1.
+#define RENDER_ZOOM_MODE 0
+
+// ─── period_k ────────────────────────────────────────────────────────────────
+// Used in normal render mode and RENDER_ZOOM_MODE.
 static constexpr int period_k{20};
 
 // ─────────────────────────────────────────────────────────────────────────────
-
-#if BENCHMARK_MODE
 
 struct BenchConfig {
     double      xmin, xmax, ymin, ymax;
@@ -38,32 +43,34 @@ struct BenchConfig {
     std::size_t zoom;
 };
 
+// 6 zoom levels centred on cx=-1.786440, cy=0.0
+// width  = 3.5 / zoom,  height = width * (9/16)
+// maxiter = max(200, floor(1000 * sqrt(2 * log2(zoom))))
+constexpr std::array<BenchConfig, 6> bench_configs {{
+    { -1.895815000000000, -1.677065000000000, -0.061523437500000,  0.061523437500000,  2828, 16    },
+    { -1.813783750000000, -1.759096250000000, -0.015380859375000,  0.015380859375000,  3464, 64    },
+    { -1.793275937500000, -1.779604062500000, -0.003845214843750,  0.003845214843750,  4000, 256   },
+    { -1.788148984375000, -1.784731015625000, -0.000961303710938,  0.000961303710938,  4472, 1024  },
+    { -1.786867246093750, -1.786012753906250, -0.000240325927734,  0.000240325927734,  4898, 4096  },
+    { -1.786546811523438, -1.786333188476563, -0.000060081481934,  0.000060081481934,  5291, 16384 },
+}};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+#if BENCHMARK_MODE
+
 int main() {
     try {
-        // FHD resolution — aspect ratio 16:9
         constexpr std::size_t nx {1920};
         constexpr std::size_t ny {1080};
 
-        // 6 zoom levels centred on cx=-1.786440, cy=0.0
-        // xmin/xmax/ymin/ymax pre-calculated: width=3.5/zoom, height=width*(9/16)
-        // maxiter = max(200, floor(1000 * sqrt(2 * log2(zoom))))
-        constexpr std::array<BenchConfig, 6> bench_configs {{
-            { -1.895815000000000, -1.677065000000000, -0.061523437500000,  0.061523437500000,  2828, 16    },
-            { -1.813783750000000, -1.759096250000000, -0.015380859375000,  0.015380859375000,  3464, 64    },
-            { -1.793275937500000, -1.779604062500000, -0.003845214843750,  0.003845214843750,  4000, 256   },
-            { -1.788148984375000, -1.784731015625000, -0.000961303710938,  0.000961303710938,  4472, 1024  },
-            { -1.786867246093750, -1.786012753906250, -0.000240325927734,  0.000240325927734,  4898, 4096  },
-            { -1.786546811523438, -1.786333188476563, -0.000060081481934,  0.000060081481934,  5291, 16384 },
-        }};
-
-        // period_k fixed for PERIOD mode rows
         constexpr int bench_period_k {20};
 
         using clock_type = std::chrono::steady_clock;
 
         std::cout << "mode,nx,ny,zoom,maxiter,period_k,plane_ms,mandel_ms,total_ms\n";
 
-        // ── CARDIOID baseline (no period check) ─────────────────────────────────
+        // ── CARDIOID baseline (no period check) ──────────────────────────────
         for (const auto& cfg : bench_configs) {
             const auto plane_start  {clock_type::now()};
             fractal_pl plane {cfg.xmin, cfg.xmax, cfg.ymin, cfg.ymax, nx, ny};
@@ -88,7 +95,7 @@ int main() {
                       << (plane_ms + mandel_ms) << '\n';
         }
 
-        // ── PERIOD sweep (period_k fixed at 20) ─────────────────────────────
+        // ── PERIOD sweep (period_k fixed at 20) ──────────────────────────────
         for (const auto& cfg : bench_configs) {
             const auto plane_start  {clock_type::now()};
             fractal_pl plane {cfg.xmin, cfg.xmax, cfg.ymin, cfg.ymax, nx, ny};
@@ -121,6 +128,43 @@ int main() {
 
     return 0;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+#elif RENDER_ZOOM_MODE
+
+int main() {
+    try {
+        constexpr std::size_t nx {1920};
+        constexpr std::size_t ny {1080};
+
+        const std::string color_scheme {"crazy"};
+
+        for (const auto& cfg : bench_configs) {
+            const std::string filename {"zoom_" + std::to_string(cfg.zoom) + ".png"};
+
+            std::cout << "Rendering zoom=" << cfg.zoom
+                      << "  maxiter=" << cfg.maxiter
+                      << "  -> " << filename << " ..." << std::flush;
+
+            fractal_pl plane {cfg.xmin, cfg.xmax, cfg.ymin, cfg.ymax, nx, ny};
+            mandel_pipeline::mandel_check(plane, cfg.maxiter, period_k);
+
+            auto buffer {render::render_color(plane, color_scheme)};
+            render::render_to_png(plane, buffer.get(), filename);
+
+            std::cout << " done\n";
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Errore: " << e.what() << '\n';
+        return 1;
+    }
+
+    return 0;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 #else // ── normal render mode ──────────────────────────────────────────────────
 
@@ -205,4 +249,4 @@ int main() {
     return 0;
 }
 
-#endif // BENCHMARK_MODE
+#endif // BENCHMARK_MODE / RENDER_ZOOM_MODE / normal
