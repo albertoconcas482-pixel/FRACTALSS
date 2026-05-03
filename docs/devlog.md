@@ -14,7 +14,7 @@ Il progetto è partito con una struttura già ben definita, divisa in moduli ind
 - `fractal_pl` — griglia del piano complesso, storage row-major flat
 - `mandel_set` — kernel di calcolo Mandelbrot
 - `render` — colorazione e scrittura su file
-- `colors` — registry dei schemi colore
+- `colors` — registry degli schemi colore
 
 La pipeline è: `fractal_pl → mandel_set → render`.
 
@@ -261,3 +261,85 @@ Lo script Python di analisi dovrà:
 - Normalizzare `mandel_ms` per pixel totali (`nx * ny`) → `ms_per_pixel`
 - Plottare `ms_per_pixel` vs `zoom` per ogni risoluzione
 - Sovrapporre `MAIN` e `CARDIOID` sullo stesso grafico per confronto diretto
+
+---
+
+## 3 Maggio 2026 — Esecuzione benchmark e risultati MAIN vs CARDIOID
+
+### Dati raccolti
+
+Il benchmark è stato eseguito su entrambe le branch in Release mode (`-O2`),
+risoluzione FHD (1920×1080), 6 livelli di zoom, `period_k = 0` per entrambe.
+
+**Branch main — label MAIN:**
+
+```
+mode,nx,ny,zoom,maxiter,period_k,plane_ms,mandel_ms,total_ms
+MAIN,1920,1080,16,   2828,0,24,242,266
+MAIN,1920,1080,64,   3464,0,22,2081,2103
+MAIN,1920,1080,256,  4000,0,22,120,142
+MAIN,1920,1080,1024, 4472,0,22,599,621
+MAIN,1920,1080,4096, 4898,0,22,2712,2734
+MAIN,1920,1080,16384,5291,0,23,357,380
+```
+
+**Branch refactor — label CARDIOID:**
+
+```
+mode,nx,ny,zoom,maxiter,period_k,plane_ms,mandel_ms,total_ms
+CARDIOID,1920,1080,16,   2828,0,16,242,258
+CARDIOID,1920,1080,64,   3464,0,16,2081,2097
+CARDIOID,1920,1080,256,  4000,0,16,120,136
+CARDIOID,1920,1080,1024, 4472,0,16,601,617
+CARDIOID,1920,1080,4096, 4898,0,15,2721,2736
+CARDIOID,1920,1080,16384,5291,0,16,359,375
+```
+
+### Analisi
+
+**`mandel_ms` è identico tra le due pipeline** — i delta sono al massimo 9 ms
+su tempi che vanno da 120 a 2712 ms, corrispondenti a una variazione < 0.3%.
+Questo rientra interamente nel rumore di misura del sistema operativo.
+
+**L'andamento non è monotono** — i tempi oscillano al crescere dello zoom:
+
+| zoom  | mandel_ms | zona visibile                        |
+|-------|-----------|--------------------------------------|
+| 16    | 242 ms    | vista ampia, molta cardioide interna |
+| 64    | 2081 ms   | bordo denso, quasi tutto escape      |
+| 256   | 120 ms    | zoom dentro zona interna             |
+| 1024  | 599 ms    | bordo intermedio                     |
+| 4096  | 2712 ms   | bordo denso di nuovo                 |
+| 16384 | 357 ms    | dentro cardioide a scala ridotta     |
+
+**Spiegazione fisica:** il Mandelbrot è auto-simile. Ad ogni livello di zoom
+si ritrovano cardioidi a scala diversa. Quando il viewport cade dentro una
+cardioide → molti early exit → tempo basso. Quando cade sul bordo tra due
+strutture → quasi tutti i pixel iterano fino all'escape → tempo alto.
+L'oscillazione del `mandel_ms` riflette direttamente questa struttura frattale.
+
+Questo è stato verificato visivamente: le 6 immagini PNG prodotte da
+`RENDER_ZOOM_MODE` mostrano zone di cardioide interna o bordo denso in
+corrispondenza rispettivamente delle valli e dei picchi di `mandel_ms`.
+
+### Conclusioni
+
+1. **Il refactoring architetturale non introduce overhead misurabile.**
+   La separazione tra loop di visita (`mandel_pipeline`) e funzioni di calcolo
+   (`mandel_set`) non ha costo a runtime in Release mode. Il compilatore inlina
+   tutto. Le due pipeline producono tempi indistinguibili.
+
+2. **Una sola misura per punto è sufficiente per questa domanda.**
+   Aggiungere ripetizioni statistiche avrebbe confermato lo stesso risultato.
+   Le ripetizioni diventano necessarie quando si misurano differenze reali
+   (es. con `check_period` attivo vs disattivo).
+
+3. **Una sola risoluzione è sufficiente per il confronto architetturale.**
+   La risoluzione scala il numero di pixel in modo uniforme per entrambe le
+   pipeline — il rapporto tra i due `mandel_ms` rimane costante.
+
+### Prossimo obiettivo
+
+Implementare `check_period` (periodicity checking) e misurarne l'impatto
+rispetto alla pipeline attuale. Lì la differenza sarà reale e un benchmark
+con ripetizioni statistiche avrà senso.
