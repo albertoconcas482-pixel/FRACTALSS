@@ -16,7 +16,7 @@
 // Set to 1 to run a CSV benchmark sweep instead of a normal render.
 // Output: mode,nx,ny,zoom,maxiter,period_k,plane_ms,mandel_ms,total_ms
 //
-//   CARDIOID — cardioid+bulb2 check + plain iterate() (no period check)
+//   CARDIOID — cardioid+bulb2 check + plain iterate(), no period check
 //   PERIOD   — cardioid+bulb2 check + iterate_with_period(k=20)
 //
 // Sweep: 6 zoom levels (16 → 16384), FHD resolution (1920×1080).
@@ -26,13 +26,21 @@
 
 // ─── render zoom mode ────────────────────────────────────────────────────────
 // Set to 1 to render one PNG per zoom level for visual inspection.
-// Files are saved as zoom_16.png, zoom_64.png, ... zoom_16384.png
-// Uses mandel_check (period_k=20) + "crazy" color scheme.
+//
+// Pipeline: mandel_check_cardioid (cardioid+bulb2 early exit, plain iterate —
+//           no period-check overhead) + "crazy" color scheme.
+//
+// Output files: /home/alberto/Documents/C++/Fractals/images/buff_bench_FHD_N.png
+//               where N = 1..6 matching bench_configs order (zoom 16 → 16384).
+//
+// Timing: plane_ms and mandel_ms are measured and printed to stdout per level.
+//         Render + write happen after the measurement window closes.
+//
 // BENCHMARK_MODE and RENDER_ZOOM_MODE are mutually exclusive — set only one to 1.
 #define RENDER_ZOOM_MODE 0
 
 // ─── period_k ────────────────────────────────────────────────────────────────
-// Used in normal render mode and RENDER_ZOOM_MODE.
+// Used in normal render mode only.
 static constexpr int period_k{20};
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -133,27 +141,63 @@ int main() {
 
 #elif RENDER_ZOOM_MODE
 
+/*
+ * Renders one PNG per zoom level for visual inspection.
+ *
+ * Pipeline: mandel_check_cardioid (cardioid + bulb-2 early exit + plain
+ * iterate, no period-check overhead). This matches the CARDIOID baseline
+ * used in BENCHMARK_MODE, so images are consistent with benchmark data.
+ *
+ * Timing: plane construction and mandel computation are measured separately.
+ * Render + write happen outside the measurement window so they do not
+ * contaminate mandel_ms.
+ *
+ * Output: /home/alberto/Documents/C++/Fractals/images/buff_bench_FHD_N.png
+ *         N = 1..6, matching bench_configs order (zoom 16 → 16384).
+ */
 int main() {
     try {
         constexpr std::size_t nx {1920};
         constexpr std::size_t ny {1080};
 
-        const std::string color_scheme {"crazy"};
+        const std::string color_scheme  {"crazy"};
+        const std::string images_dir    {"/home/alberto/Documents/C++/Fractals/images/"};
 
-        for (const auto& cfg : bench_configs) {
-            const std::string filename {"zoom_" + std::to_string(cfg.zoom) + ".png"};
+        using clock_type = std::chrono::steady_clock;
 
-            std::cout << "Rendering zoom=" << cfg.zoom
-                      << "  maxiter=" << cfg.maxiter
-                      << "  -> " << filename << " ..." << std::flush;
+        for (std::size_t idx = 0; idx < bench_configs.size(); ++idx) {
+            const auto& cfg = bench_configs[idx];
 
+            const std::string filename {
+                images_dir + "buff_bench_FHD_" + std::to_string(idx + 1) + ".png"
+            };
+
+            std::cout << "[" << (idx + 1) << "/6] zoom=" << cfg.zoom
+                      << "  maxiter=" << cfg.maxiter << "\n";
+
+            // ── measure: plane construction ───────────────────────────────────
+            const auto plane_start  {clock_type::now()};
             fractal_pl plane {cfg.xmin, cfg.xmax, cfg.ymin, cfg.ymax, nx, ny};
-            mandel_pipeline::mandel_check(plane, cfg.maxiter, period_k);
+            const auto plane_end    {clock_type::now()};
 
+            // ── measure: mandel computation (cardioid pipeline, no period) ────
+            const auto mandel_start {clock_type::now()};
+            mandel_pipeline::mandel_check_cardioid(plane, cfg.maxiter);
+            const auto mandel_end   {clock_type::now()};
+
+            const auto plane_ms  {std::chrono::duration_cast<std::chrono::milliseconds>(
+                plane_end  - plane_start).count()};
+            const auto mandel_ms {std::chrono::duration_cast<std::chrono::milliseconds>(
+                mandel_end - mandel_start).count()};
+
+            std::cout << "  plane_ms  = " << plane_ms  << " ms\n";
+            std::cout << "  mandel_ms = " << mandel_ms << " ms\n";
+
+            // ── outside measurement window: render + write ────────────────────
             auto buffer {render::render_color(plane, color_scheme)};
             render::render_to_png(plane, buffer.get(), filename);
 
-            std::cout << " done\n";
+            std::cout << "  -> " << filename << "  done\n\n";
         }
     }
     catch (const std::exception& e) {
