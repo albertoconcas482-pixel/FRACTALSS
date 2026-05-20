@@ -20,7 +20,7 @@ $$\text{fractal\_pl (Grid)} \longrightarrow \text{mandel\_pipeline (Kernel)} \lo
 The core data structure `fractal_el` has been stripped of all redundant data, including coordinate points (`std::complex<double>`) and helper flags (`bool inside`). 
 
 * Every pixel occupies exactly **4 bytes** of memory (`int escapeiter`), down from the previous 32-byte representation.
-* This optimization increases the maximum reachable resolution exponentially, completely eliminating risk of `std::bad_alloc` on consumer machines.
+* This optimization increases the maximum reachable resolution exponentially, completely eliminating the risk of `std::bad_alloc` on consumer machines.
 
 ### 2. Brent's Cycle Detection Algorithm
 To isolate interior points of the Mandelbrot set that evade analytical checks, the kernel implements **Brent's Algorithm** for period cycle detection.
@@ -35,6 +35,7 @@ Nested coordinate loops (row/column pairs) have been completely refactored into 
 * Pixel coordinates ($cr, ci$) are tracked incrementally ($cr += dx$) rather than being re-multiplied at every index.
 * Eliminating floating-point multiplications at the pixel level significantly reduces CPU instruction count.
 * Sequential row-major memory writes ensure maximum L1/L2 CPU cache hit rates.
+* *Note on Concurrency*: The current strength-reduction state machine introduces a loop-carried dependency. Transitioning to chunk-based block parallelization will require state isolation via stateless coordinate lookup wrappers.
 
 ### 4. Open/Closed Presentation Layer
 Color schemes are completely decoupled from the data pipeline via a self-registering static lookup registry. New colorizers can be introduced without modifying the core renderer or the `main` loop execution logic.
