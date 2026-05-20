@@ -4,24 +4,10 @@
 #include "fractal_el.hpp"
 
 /*
- * Represents the complex plane sampled on a regular nx * ny grid.
+ * fractal_pl — Manages the complex plane grid storage.
  *
- * The grid is stored row-major in data_: element at column ix,
- * row iy is located at index iy * nx_ + ix.
- * Row 0 corresponds to ymax (top), last row corresponds to ymin (bottom).
- *
- * Responsibilities:
- *   - allocate and initialize the grid on construction
- *   - provide read/write access to the sampled points
- *
- * Mandelbrot computation and coloring are delegated
- * to separate modules.
- *
- * Future: this class is the natural owner of symmetry metadata.
- * If the viewport contains the real axis (ymin < 0 < ymax), fractal_pl
- * could detect the symmetric portion and expose the index range
- * of the rows to compute, allowing mandel_set to skip the mirrored half.
- * fractal_pl would then handle the mirroring step after computation.
+ * Allocates and handles a flat row-major vector of size nx * ny.
+ * Geometric coordinate precomputations have been completely removed from the constructor.
  */
 class fractal_pl {
 private:
@@ -32,8 +18,6 @@ private:
     std::size_t nx_{};
     std::size_t ny_{};
     std::vector<fractal_el> data_{};
-
-    void init_grid();
 
 public:
     fractal_pl(double xmin, double xmax,
