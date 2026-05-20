@@ -15,6 +15,8 @@ private:
     double xmax_{};
     double ymin_{};
     double ymax_{};
+    double dx_{}; // Cached step size along the real axis
+    double dy_{}; // Cached step size along the imaginary axis
     std::size_t nx_{};
     std::size_t ny_{};
     std::vector<fractal_el> data_{};
