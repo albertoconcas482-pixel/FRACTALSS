@@ -9,7 +9,9 @@ fractal_pl::fractal_pl(double xmin, double xmax,
     , ymax_{ymax}
     , nx_{nx}
     , ny_{ny}
-    , data_(nx * ny) // Automatically zeroes out escapeiter for all elements
+    , dx_{(xmax - xmin) / static_cast<double>(nx - 1)}
+    , dy_{(ymax - ymin) / static_cast<double>(ny - 1)}
+    , data_(nx * ny) 
 {
-    // Grid geometric precomputations removed for maximum allocation efficiency.
+    // Step deltas are precomputed and cached to avoid redundant division overhead.
 }
