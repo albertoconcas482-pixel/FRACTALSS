@@ -1,30 +1,45 @@
 #include "render.hpp"
 #include "colors.hpp"
-#include <fstream>
+#include <filesystem>
 #include <stdexcept>
 
-void render::render_color(fractal_pl& plane, const std::string& color_type) {
-    // Delegates color assignment to color_registry based on color_type name
-    color_registry::apply_color(color_type, plane);
+// Compile stb_image_write implementation once in this translation unit
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
+std::unique_ptr<unsigned char[]> render::render_color(
+    const fractal_pl& plane,
+    const std::string& color_type,
+    int maxiter)
+{
+    return color_registry::apply_color(color_type, plane, maxiter);
 }
 
-void render::render_to_ppm(const fractal_pl& plane, const std::string& filename) {
-    std::ofstream out{filename, std::ios::binary};
+void render::render_to_png(
+    const fractal_pl& plane,
+    const unsigned char* buffer,
+    const std::string& filename)
+{
+    const std::filesystem::path output_path{filename};
 
-    if (!out) {
-        throw std::runtime_error{"cannot open output file"};
+    // Safely generate directory trees only if a parent folder is declared in the target string
+    if (output_path.has_parent_path()) {
+        std::filesystem::create_directories(output_path.parent_path());
     }
 
-    // PPM header: format P6 (binary RGB), width, height, max color value
-    out << "P6\n";
-    out << plane.nx() << ' ' << plane.ny() << '\n';
-    out << "255\n";
+    const int width  { static_cast<int>(plane.nx()) };
+    const int height { static_cast<int>(plane.ny()) };
+    constexpr int channels { 3 };
 
-    const auto& data{plane.data()};
+    const int result { stbi_write_png(
+        output_path.string().c_str(),
+        width, height,
+        channels,
+        buffer,
+        width * channels)
+    };
 
-    // Write one RGB triplet per pixel as raw bytes
-    for (const auto& el : data) {
-        const unsigned char rgb[3]{el.r, el.g, el.b};
-        out.write(reinterpret_cast<const char*>(rgb), 3);
+    if (result == 0) {
+        throw std::runtime_error{"stbi_write_png: failed to write output image: " + output_path.string()};
     }
 }
