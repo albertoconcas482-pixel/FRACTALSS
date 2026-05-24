@@ -2,6 +2,12 @@
 
 namespace mandel_set {
 
+    // Struct returned by the computational kernel
+    struct iteration_result {
+        int escapeiter;
+        float magnitude_sq;
+    };
+
     inline double next_real(double zr2, double zi2, double cr) {
         return zr2 - zi2 + cr;
     }
@@ -24,9 +30,8 @@ namespace mandel_set {
 
     /*
      * Cycle detection via Brent's Algorithm.
-     * Uses a geometrically expanding window (powers of 2) to update the reference point.
-     * This guarantees the detection of orbital cycles of any period length without a fixed k.
+     * Returns both the iteration count and the squared magnitude at escape time.
      */
-    int iterate_with_period(double cr, double ci, int maxiter);
+    iteration_result iterate_with_period(double cr, double ci, int maxiter);
 
 } // namespace mandel_set
