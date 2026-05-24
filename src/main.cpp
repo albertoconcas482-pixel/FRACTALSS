@@ -10,15 +10,13 @@
 
 int main() {
     try {
-     // Target Viewport Settings (Seahorse valley centered on the same point)
+     // Target Viewport Settings (Seahorse valley area at low zoom)
         constexpr double cx{-1.338396208};
         constexpr double cy{-0.051328422};
+        constexpr double target_zoom{53.0};
         
-        // Lowered zoom level to investigate precision vs spatial aliasing limits
-        constexpr double target_zoom{53};
-        
-        // Standard high-definition resolution for baseline comparison
-       constexpr int render_width  {3840};
+        // 4K Resolution to ensure high spatial sampling density
+        constexpr int render_width  {3840};
         constexpr int render_height {2880};
         
         // Mathematically derive the viewport bounds preserving the 4:3 aspect ratio
@@ -30,12 +28,18 @@ int main() {
         const double ymin{cy - y_height / 2.0};
         const double ymax{cy + y_height / 2.0};
         
-        constexpr double base_quality{1000.0};
+        // --- ITERATION BOOST EXPERIMENT ---
+        // Option A: Scaling up base_quality 10x (scales maxiter to ~33,800)
+        constexpr double base_quality{10000.0}; 
         const double zoom        {3.5 / (xmax - xmin)};
         const double zoom_clamped{std::max(zoom, 2.0)};
-        const int    maxiter     {std::max(200, static_cast<int>(
-                                    base_quality * std::sqrt(2.0 * std::log2(zoom_clamped))))};
+        
+        const int maxiter {std::max(200, static_cast<int>(
+                                base_quality * std::sqrt(2.0 * std::log2(zoom_clamped))))};
 
+        // Option B: Hardcoded brutal override for absolute testing.
+        // Uncomment the line below to force exactly 50,000 iterations, bypassing the formula.
+        // constexpr int maxiter {50000};
         const std::string color_scheme{"smooth"};
         const std::string output_file {"images/mandelbrot_brent.png"};
 
