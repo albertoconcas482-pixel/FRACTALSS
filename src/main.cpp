@@ -26,7 +26,7 @@ int main() {
         const int    maxiter     {std::max(200, static_cast<int>(
                                     base_quality * std::sqrt(2.0 * std::log2(zoom_clamped))))};
 
-        const std::string color_scheme{"crazy"};
+        const std::string color_scheme{"smooth"};
         const std::string output_file {"images/mandelbrot_brent.png"};
 
         std::cout << "=======================================\n";
