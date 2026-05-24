@@ -34,7 +34,7 @@ int main() {
         const double zoom        {3.5 / (xmax - xmin)};
         const double zoom_clamped{std::max(zoom, 2.0)};
         
-        const int maxiter {300000};
+        const int maxiter {3000000};
 
         // Option B: Hardcoded brutal override for absolute testing.
         // Uncomment the line below to force exactly 50,000 iterations, bypassing the formula.
