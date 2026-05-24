@@ -13,7 +13,7 @@ int main() {
      // Target Viewport Settings (Seahorse valley area at low zoom)
         constexpr double cx{-1.338396208};
         constexpr double cy{-0.051328422};
-        constexpr double target_zoom{5.0};
+        constexpr double target_zoom{5000000.0};
         
         // 4K Resolution to ensure high spatial sampling density
         constexpr int render_width  {3840};
