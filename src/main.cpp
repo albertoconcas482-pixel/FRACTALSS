@@ -18,8 +18,8 @@ int main() {
         constexpr double target_zoom{53};
         
         // Standard high-definition resolution for baseline comparison
-        constexpr int render_width  {1920};
-        constexpr int render_height {1440};
+       constexpr int render_width  {3840};
+        constexpr int render_height {2880};
         
         // Mathematically derive the viewport bounds preserving the 4:3 aspect ratio
         constexpr double x_width {3.5 / target_zoom};
