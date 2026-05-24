@@ -13,7 +13,7 @@ int main() {
      // Target Viewport Settings (Seahorse valley area at low zoom)
         constexpr double cx{-1.338396208};
         constexpr double cy{-0.051328422};
-        constexpr double target_zoom{5000000.0};
+        constexpr double target_zoom{500};
         
         // 4K Resolution to ensure high spatial sampling density
         constexpr int render_width  {3840};
@@ -34,8 +34,7 @@ int main() {
         const double zoom        {3.5 / (xmax - xmin)};
         const double zoom_clamped{std::max(zoom, 2.0)};
         
-        const int maxiter {std::max(200, static_cast<int>(
-                                base_quality * std::sqrt(2.0 * std::log2(zoom_clamped))))};
+        const int maxiter {300000};
 
         // Option B: Hardcoded brutal override for absolute testing.
         // Uncomment the line below to force exactly 50,000 iterations, bypassing the formula.
