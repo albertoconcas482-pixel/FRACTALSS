@@ -1,7 +1,9 @@
 #include "mandel_set.hpp"
 
 mandel_set::iteration_result mandel_set::iterate_with_period(double cr, double ci, int maxiter) {
-    constexpr double epsilon{1e-20};
+    // Tightened from 1e-20 to 1e-28 to eliminate false-positive cycle detections 
+    // at deep zoom levels, removing speckle/pepper noise from the smooth gradients.
+    constexpr double epsilon{1e-28};
 
     double zr{0.0};
     double zi{0.0};
