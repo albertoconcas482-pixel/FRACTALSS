@@ -15,7 +15,7 @@ int main() {
         constexpr double cy{-0.051328422};
         
         // Lowered zoom level to investigate precision vs spatial aliasing limits
-        constexpr double target_zoom{5369.0};
+        constexpr double target_zoom{53};
         
         // Standard high-definition resolution for baseline comparison
         constexpr int render_width  {1920};
