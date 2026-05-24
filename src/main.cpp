@@ -13,7 +13,7 @@ int main() {
       // Target Viewport Settings (Seahorse valley dense spiral area)
         constexpr double cx{-1.338396208};
         constexpr double cy{-0.051328422};
-        constexpr double target_zoom{536915.0};
+        constexpr double target_zoom{5369};
         
         // Massive 16K Resolution preserving the 4:3 aspect ratio (64x more pixels than FHD)
         constexpr int render_width  {15360};
