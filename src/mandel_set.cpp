@@ -1,6 +1,6 @@
 #include "mandel_set.hpp"
 
-int mandel_set::iterate_with_period(double cr, double ci, int maxiter) {
+mandel_set::iteration_result mandel_set::iterate_with_period(double cr, double ci, int maxiter) {
     constexpr double epsilon{1e-20};
 
     double zr{0.0};
@@ -24,7 +24,8 @@ int mandel_set::iterate_with_period(double cr, double ci, int maxiter) {
         const double dr{zr - zr_ref};
         const double di{zi - zi_ref};
         if (dr * dr + di * di < epsilon) {
-            return maxiter; // Orbit cycle detected: point is interior
+            // Orbit cycle detected: point is interior. Magnitude is irrelevant here.
+            return {maxiter, 0.0f}; 
         }
 
         // When the current iteration hits the end of the tracking window,
@@ -36,5 +37,7 @@ int mandel_set::iterate_with_period(double cr, double ci, int maxiter) {
         }
     }
 
-    return iter;
+    // Loop finished (either escaped or reached maxiter).
+    // Return iteration count and the current squared magnitude (|z|^2).
+    return {iter, static_cast<float>(zr2 + zi2)};
 }
