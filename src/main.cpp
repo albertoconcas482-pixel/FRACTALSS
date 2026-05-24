@@ -10,25 +10,23 @@
 
 int main() {
     try {
-        // Target Viewport Settings (Seahorse valley dense spiral area)
+       // Target Viewport Settings (Seahorse valley dense spiral area)
         constexpr double cx{-1.338396208};
         constexpr double cy{-0.051328422};
-        
-        // Target zoom level derived from your external explorer input
         constexpr double target_zoom{536915.0};
         
-        // Mathematically derive the viewport bounds preserving the 4:3 aspect ratio (1920x1440)
+        // Resolution scaled up to 4K to combat spatial aliasing
+        constexpr int render_width  {3840};
+        constexpr int render_height {2880};
+        
+        // Mathematically derive the viewport bounds preserving the dynamic aspect ratio
         constexpr double x_width {3.5 / target_zoom};
-        constexpr double y_height{x_width * (1440.0 / 1920.0)};
+        constexpr double y_height{x_width * (static_cast<double>(render_height) / render_width)};
 
         const double xmin{cx - x_width / 2.0};
         const double xmax{cx + x_width / 2.0};
         const double ymin{cy - y_height / 2.0};
         const double ymax{cy + y_height / 2.0};
-
-        constexpr int render_width  {1920};
-        constexpr int render_height {1440};
-
         // Adaptive runtime computation of maximum iterations based on zoom factor
         constexpr double base_quality{1000.0};
         const double zoom        {3.5 / (xmax - xmin)};
