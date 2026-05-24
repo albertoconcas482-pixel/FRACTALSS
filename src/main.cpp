@@ -10,16 +10,18 @@
 
 int main() {
     try {
-      // Target Viewport Settings (Seahorse valley dense spiral area)
+     // Target Viewport Settings (Seahorse valley centered on the same point)
         constexpr double cx{-1.338396208};
         constexpr double cy{-0.051328422};
-        constexpr double target_zoom{5369};
         
-        // Massive 16K Resolution preserving the 4:3 aspect ratio (64x more pixels than FHD)
-        constexpr int render_width  {15360};
-        constexpr int render_height {11520};
+        // Lowered zoom level to investigate precision vs spatial aliasing limits
+        constexpr double target_zoom{5369.0};
         
-        // Mathematically derive the viewport bounds preserving the aspect ratio dynamically
+        // Standard high-definition resolution for baseline comparison
+        constexpr int render_width  {1920};
+        constexpr int render_height {1440};
+        
+        // Mathematically derive the viewport bounds preserving the 4:3 aspect ratio
         constexpr double x_width {3.5 / target_zoom};
         constexpr double y_height{x_width * (static_cast<double>(render_height) / render_width)};
 
