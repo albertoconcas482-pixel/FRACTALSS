@@ -6,7 +6,7 @@
 
 #include "fractal_pl.hpp"
 #include "mandel_pipeline.hpp"
-#include "render.hpp"
+#include "utils.hpp" // Added to enable raw binary data streaming
 
 int main() {
     try {
@@ -28,6 +28,7 @@ int main() {
 
         constexpr int render_width  {1920};
         constexpr int render_height {1440};
+        
         // Adaptive runtime computation of maximum iterations based on zoom factor
         constexpr double base_quality{1000.0};
         const double zoom        {3.5 / (xmax - xmin)};
@@ -35,16 +36,16 @@ int main() {
         const int    maxiter     {std::max(200, static_cast<int>(
                                     base_quality * std::sqrt(2.0 * std::log2(zoom_clamped))))};
 
-        const std::string color_scheme{"crazy"};
-        const std::string output_file {"images/mandelbrot_brent.png"};
+        // Output configuration for data analysis phase
+        const std::string output_data_file {"fractal_dump.bin"};
 
         std::cout << "=======================================\n";
-        std::cout << "      FRACTALSS - Clean Core Engine    \n";
+        std::cout << "      FRACTALSS - Data Analysis Mode   \n";
         std::cout << "=======================================\n";
         std::cout << "Computed Zoom  : " << zoom     << "\n";
         std::cout << "Max Iterations : " << maxiter  << "\n";
         std::cout << "Resolution     : " << render_width << "x" << render_height << "\n";
-        std::cout << "Output File    : " << output_file << "\n\n";
+        std::cout << "Output File    : " << output_data_file << "\n\n";
 
         std::cout << "Initializing memory grid and starting compute kernel..." << std::endl;
         
@@ -56,17 +57,17 @@ int main() {
         // 2. Kernel execution using Brent's Cycle Detection and Strength Reduction
         mandel_pipeline::mandel_check(plane, maxiter);
 
-        // 3. Color mapping allocation and native PNG output serialization
-        auto buffer{render::render_color(plane, color_scheme, maxiter)};
-        render::render_to_png(plane, buffer.get(), output_file);
+        // 3. Binary serialization of raw simulation data (bypassing presentation layer)
+        std::cout << "Kernel execution finished. Streaming raw grid bytes to disk..." << std::endl;
+        export_data_raw(plane, output_data_file);
 
         const auto end_time{std::chrono::steady_clock::now()};
         const auto total_ms{
             std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count()
         };
 
-        std::cout << "Render engine finished successfully!\n";
-        std::cout << "Total execution time: " << total_ms / 1000.0 << " s\n";
+        std::cout << "Data dump completed successfully!\n";
+        std::cout << "Total computation & export time: " << total_ms / 1000.0 << " s\n";
         std::cout << "=======================================\n";
     }
     catch (const std::exception& e) {
