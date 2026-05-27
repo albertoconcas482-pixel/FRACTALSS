@@ -271,29 +271,16 @@ public:
         const auto& data{plane.data()};
         const std::size_t n{data.size()};
         auto buffer{std::make_unique<unsigned char[]>(n * 3)};
-/*
-        // --- Mathematical Palette Configuration (Inigo Quilez constants) ---
-        // Smooth cosmic rainbow profile
-        constexpr float bias = 0.5f;       // Center of the sine wave (brightness)
-        constexpr float amp  = 0.5f;       // Amplitude of the sine wave (contrast)
-        constexpr float freq = 0.15f;      // Color repetition frequency
-        
-        // Perfect symmetric phase shifts (0, 120, 240 degrees in radians)
-        constexpr float pi_2_3 = 2.094395102f; 
-        constexpr float pi_4_3 = 4.188790204f;
-*/
 
-
-// --- Alternative Tuning for Electric/Gold Palette ---
         constexpr float bias = 0.5f;
         constexpr float amp  = 0.5f;
-        constexpr float freq = 0.20f; // Slightly higher frequency for more detail
-
-// Shift the base phase to change the starting colors of the spectrum
-        constexpr float shift = 1.0f; 
-        constexpr float pi_2_3 = 2.094395102f;
+        
+        constexpr float pi_2_3 = 2.094395102f; 
         constexpr float pi_4_3 = 4.188790204f;
-        // Single-pass computation
+
+        // Precompute the inverse of maxiter to avoid expensive divisions inside the loop
+        const float maxiter_inv = 1.0f / static_cast<float>(maxiter);
+
         for (std::size_t i = 0; i < n; ++i) {
             const int iter{data[i].escapeiter};
             
@@ -302,29 +289,27 @@ public:
                 buffer[i * 3 + 1] = 0;
                 buffer[i * 3 + 2] = 0;
             } else {
-                // 1. Standard continuous potential formula
                 float mu = static_cast<float>(iter) + 2.0f - std::log2(std::log2(data[i].magnitude_sq));
 
-                // 2. Non-linear frequency dampening (Power scale)
-                // Using std::sqrt or std::pow prevents high-frequency striping (aliasing) at deep zoom levels
-                float t = std::sqrt(mu) * freq; 
-/*
-                // 3. Evaluate the optimized symmetric cosine waves
-                // 127.5f * 2.0f * bias maps the [0.0, 1.0] domain straight to [0, 255] unsigned char
+                // 1. Calculate the normalized depth factor alpha [0.0, 1.0)
+                float alpha = static_cast<float>(iter) * maxiter_inv;
+
+                // 2. Compute the two alternative coloring behaviors
+                float t_linear = mu * 0.05f;            // Old style: wide, vibrant background bands
+                float t_root   = std::sqrt(mu) * 0.15f; // New style: compressed, anti-aliased filaments
+
+                // 3. Smoothly interpolate between them based on proximity to the border
+                float t = (1.0f - alpha) * t_linear + alpha * t_root;
+
+                // 4. Generate the symmetric cosine waves
                 buffer[i * 3    ] = static_cast<unsigned char>(255.0f * (bias + amp * std::cos(t + 0.0f)));
                 buffer[i * 3 + 1] = static_cast<unsigned char>(255.0f * (bias + amp * std::cos(t + pi_2_3)));
                 buffer[i * 3 + 2] = static_cast<unsigned char>(255.0f * (bias + amp * std::cos(t + pi_4_3)));
-*/
-                buffer[i * 3    ] = static_cast<unsigned char>(255.0f * (bias + amp * std::cos(t + shift + 0.0f)));
-                buffer[i * 3 + 1] = static_cast<unsigned char>(255.0f * (bias + amp * std::cos(t + shift + pi_2_3)));
-                buffer[i * 3 + 2] = static_cast<unsigned char>(255.0f * (bias + amp * std::cos(t + shift + pi_4_3)));
-            
             }
         }
         return buffer;
     }
 private:
-    // FIXED: Correctly registers smooth_origin::apply instead of smooth::apply
     static inline const bool registered_{
         (color_registry::register_color("smooth_origin", smooth_origin::apply), true)
     };
