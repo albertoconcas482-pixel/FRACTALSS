@@ -6,11 +6,12 @@
 
 #include "fractal_pl.hpp"
 #include "mandel_pipeline.hpp"
-#include "utils.hpp" // Added to enable raw binary data streaming
+#include "render.hpp" // Added back to enable the presentation layer
+#include "utils.hpp"  // Kept in case you still need raw binary exports
 
 int main() {
     try {
-       // Target Viewport Settings (Seahorse valley dense spiral area)
+        // Target Viewport Settings (Seahorse valley dense spiral area)
         constexpr double cx{-1.338396208};
         constexpr double cy{-0.051328422};
         
@@ -36,38 +37,47 @@ int main() {
         const int    maxiter     {std::max(200, static_cast<int>(
                                     base_quality * std::sqrt(2.0 * std::log2(zoom_clamped))))};
 
-        // Output configuration for data analysis phase
+        // Output configurations
+        const std::string output_png_file  {"mandelbrot_smooth.png"};
         const std::string output_data_file {"fractal_dump.bin"};
 
         std::cout << "=======================================\n";
-        std::cout << "      FRACTALSS - Data Analysis Mode   \n";
+        std::cout << "      FRACTALSS - High Performance mode\n";
         std::cout << "=======================================\n";
         std::cout << "Computed Zoom  : " << zoom     << "\n";
         std::cout << "Max Iterations : " << maxiter  << "\n";
         std::cout << "Resolution     : " << render_width << "x" << render_height << "\n";
-        std::cout << "Output File    : " << output_data_file << "\n\n";
+        std::cout << "Output Target  : " << output_png_file << "\n\n";
 
         std::cout << "Initializing memory grid and starting compute kernel..." << std::endl;
         
         const auto start_time{std::chrono::steady_clock::now()};
 
-        // 1. Grid construction (RAM optimized)
+        // 1. Grid construction (RAM optimized flat row-major layout)
         fractal_pl plane(xmin, xmax, ymin, ymax, render_width, render_height);
 
-        // 2. Kernel execution using Brent's Cycle Detection and Strength Reduction
+        // 2. Kernel execution using OpenMP and Brent's Cycle Detection
         mandel_pipeline::mandel_check(plane, maxiter);
+        std::cout << "Kernel execution finished successfully." << std::endl;
 
-        // 3. Binary serialization of raw simulation data (bypassing presentation layer)
-        std::cout << "Kernel execution finished. Streaming raw grid bytes to disk..." << std::endl;
-        export_data_raw(plane, output_data_file);
+        // 3. Presentation Layer: Apply the optimized 2-pass smooth color scheme
+        std::cout << "Applying adaptive smooth coloring algorithm (LUT-based)..." << std::endl;
+        auto color_buffer = render::render_color(plane, "smooth", maxiter);
+
+        // 4. Image I/O: Stream the RGB buffer directly to a lossless PNG file via stb_image_write
+        std::cout << "Streaming color buffer to disk as PNG..." << std::endl;
+        render::render_to_png(plane, color_buffer.get(), output_png_file);
+
+        // Optional: Keep the raw data dump if you still want to cross-analyze via Python
+        // export_data_raw(plane, output_data_file);
 
         const auto end_time{std::chrono::steady_clock::now()};
         const auto total_ms{
             std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count()
         };
 
-        std::cout << "Data dump completed successfully!\n";
-        std::cout << "Total computation & export time: " << total_ms / 1000.0 << " s\n";
+        std::cout << "\nRender process completed successfully!\n";
+        std::cout << "Total execution time: " << total_ms / 1000.0 << " s\n";
         std::cout << "=======================================\n";
     }
     catch (const std::exception& e) {
