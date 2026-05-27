@@ -272,37 +272,43 @@ public:
         const std::size_t n{data.size()};
         auto buffer{std::make_unique<unsigned char[]>(n * 3)};
 
-        for (std::size_t i{}; i < n; ++i) {
+        // --- Mathematical Palette Configuration (Inigo Quilez constants) ---
+        // Smooth cosmic rainbow profile
+        constexpr float bias = 0.5f;       // Center of the sine wave (brightness)
+        constexpr float amp  = 0.5f;       // Amplitude of the sine wave (contrast)
+        constexpr float freq = 0.15f;      // Color repetition frequency
+        
+        // Perfect symmetric phase shifts (0, 120, 240 degrees in radians)
+        constexpr float pi_2_3 = 2.094395102f; 
+        constexpr float pi_4_3 = 4.188790204f;
+
+        // Single-pass computation
+        for (std::size_t i = 0; i < n; ++i) {
             const int iter{data[i].escapeiter};
             
-            if (iter == maxiter) {
-                // Interior points mapped to pure black
+            if (iter == maxiter || data[i].magnitude_sq <= 1.0f) {
                 buffer[i * 3    ] = 0;
                 buffer[i * 3 + 1] = 0;
                 buffer[i * 3 + 2] = 0;
             } else {
-                // Continuous Potential Algorithm (Smooth Coloring)
-                const float mag_sq = data[i].magnitude_sq;
-                
-                float mu = static_cast<float>(iter);
-                // Safety check: avoid log domain errors
-                if (mag_sq > 0.0f) {
-                    mu += 2.0f - std::log2(std::log2(mag_sq));
-                }
+                // 1. Standard continuous potential formula
+                float mu = static_cast<float>(iter) + 2.0f - std::log2(std::log2(data[i].magnitude_sq));
 
-                // Procedural Cosine Palette (Inigo Quilez technique)
-                // Multiplier 0.05f controls the frequency of the color bands
-                const float t = mu * 0.05f; 
+                // 2. Non-linear frequency dampening (Power scale)
+                // Using std::sqrt or std::pow prevents high-frequency striping (aliasing) at deep zoom levels
+                float t = std::sqrt(mu) * freq; 
 
-                // Generate smooth RGB sine waves with distinct phase shifts
-                buffer[i * 3    ] = static_cast<unsigned char>(127.5f * (1.0f + std::cos(t + 0.0f))); // Red
-                buffer[i * 3 + 1] = static_cast<unsigned char>(127.5f * (1.0f + std::cos(t + 1.0f))); // Green
-                buffer[i * 3 + 2] = static_cast<unsigned char>(127.5f * (1.0f + std::cos(t + 2.0f))); // Blue
+                // 3. Evaluate the optimized symmetric cosine waves
+                // 127.5f * 2.0f * bias maps the [0.0, 1.0] domain straight to [0, 255] unsigned char
+                buffer[i * 3    ] = static_cast<unsigned char>(255.0f * (bias + amp * std::cos(t + 0.0f)));
+                buffer[i * 3 + 1] = static_cast<unsigned char>(255.0f * (bias + amp * std::cos(t + pi_2_3)));
+                buffer[i * 3 + 2] = static_cast<unsigned char>(255.0f * (bias + amp * std::cos(t + pi_4_3)));
             }
         }
         return buffer;
     }
 private:
+    // FIXED: Correctly registers smooth_origin::apply instead of smooth::apply
     static inline const bool registered_{
         (color_registry::register_color("smooth_origin", smooth_origin::apply), true)
     };
