@@ -263,3 +263,47 @@ private:
         (color_registry::register_color("smooth_lava", smooth_lava::apply), true)
     };
 };
+
+
+class smooth_origin {
+public:
+    static std::unique_ptr<unsigned char[]> apply(const fractal_pl& plane, int maxiter) {
+        const auto& data{plane.data()};
+        const std::size_t n{data.size()};
+        auto buffer{std::make_unique<unsigned char[]>(n * 3)};
+
+        for (std::size_t i{}; i < n; ++i) {
+            const int iter{data[i].escapeiter};
+            
+            if (iter == maxiter) {
+                // Interior points mapped to pure black
+                buffer[i * 3    ] = 0;
+                buffer[i * 3 + 1] = 0;
+                buffer[i * 3 + 2] = 0;
+            } else {
+                // Continuous Potential Algorithm (Smooth Coloring)
+                const float mag_sq = data[i].magnitude_sq;
+                
+                float mu = static_cast<float>(iter);
+                // Safety check: avoid log domain errors
+                if (mag_sq > 0.0f) {
+                    mu += 2.0f - std::log2(std::log2(mag_sq));
+                }
+
+                // Procedural Cosine Palette (Inigo Quilez technique)
+                // Multiplier 0.05f controls the frequency of the color bands
+                const float t = mu * 0.05f; 
+
+                // Generate smooth RGB sine waves with distinct phase shifts
+                buffer[i * 3    ] = static_cast<unsigned char>(127.5f * (1.0f + std::cos(t + 0.0f))); // Red
+                buffer[i * 3 + 1] = static_cast<unsigned char>(127.5f * (1.0f + std::cos(t + 1.0f))); // Green
+                buffer[i * 3 + 2] = static_cast<unsigned char>(127.5f * (1.0f + std::cos(t + 2.0f))); // Blue
+            }
+        }
+        return buffer;
+    }
+private:
+    static inline const bool registered_{
+        (color_registry::register_color("smooth", smooth::apply), true)
+    };
+};
