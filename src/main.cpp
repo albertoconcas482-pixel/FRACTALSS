@@ -62,7 +62,7 @@ int main() {
 
         // 3. Presentation Layer: Apply the optimized 2-pass smooth color scheme
         std::cout << "Applying adaptive smooth coloring algorithm (LUT-based)..." << std::endl;
-        auto color_buffer = render::render_color(plane, "smooth_lava", maxiter);
+        auto color_buffer = render::render_color(plane, "smooth_origin", maxiter);
 
         // 4. Image I/O: Stream the RGB buffer directly to a lossless PNG file via stb_image_write
         std::cout << "Streaming color buffer to disk as PNG..." << std::endl;
