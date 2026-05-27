@@ -4,7 +4,9 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
-#include <cmath> // Required for std::log2, std::cos
+#include <cmath> // Required for std::log2
+#include <array>
+#include <vector>
 #include "fractal_pl.hpp"
 
 class color_registry {
@@ -83,38 +85,94 @@ private:
 };
 
 class smooth {
+private:
+    // Generate a 256-color Lookup Table (LUT) approximating Matplotlib's 'inferno'
+    // This is computed only once at startup to avoid runtime overhead.
+    static std::array<std::array<unsigned char, 3>, 256> generate_lut() {
+        std::array<std::array<unsigned char, 3>, 256> lut{};
+        
+        // Keyframes for the Inferno colormap
+        const std::vector<std::array<float, 3>> keys = {
+            {0.0f,   0.0f,   4.0f},   // Black/Dark Blue
+            {66.0f,  10.0f,  104.0f}, // Dark Purple
+            {147.0f, 38.0f,  103.0f}, // Magenta
+            {221.0f, 81.0f,  58.0f},  // Red-Orange
+            {252.0f, 165.0f, 10.0f},  // Yellow-Orange
+            {252.0f, 255.0f, 164.0f}  // Bright Yellow/White
+        };
+        
+        const int num_segments = keys.size() - 1;
+        
+        // Linearly interpolate between keyframes to build the 256 RGB array
+        for (int i = 0; i < 256; ++i) {
+            float t = static_cast<float>(i) / 255.0f;
+            float scaled_t = t * num_segments;
+            int idx = static_cast<int>(scaled_t);
+            if (idx >= num_segments) idx = num_segments - 1;
+            float frac = scaled_t - static_cast<float>(idx);
+            
+            lut[i][0] = static_cast<unsigned char>(keys[idx][0] + frac * (keys[idx+1][0] - keys[idx][0]));
+            lut[i][1] = static_cast<unsigned char>(keys[idx][1] + frac * (keys[idx+1][1] - keys[idx][1]));
+            lut[i][2] = static_cast<unsigned char>(keys[idx][2] + frac * (keys[idx+1][2] - keys[idx][2]));
+        }
+        return lut;
+    }
+
+    // Static initialization of the LUT (zero-cost during the hot render loop)
+    static inline const std::array<std::array<unsigned char, 3>, 256> lut_ = generate_lut();
+
 public:
     static std::unique_ptr<unsigned char[]> apply(const fractal_pl& plane, int maxiter) {
         const auto& data{plane.data()};
         const std::size_t n{data.size()};
         auto buffer{std::make_unique<unsigned char[]>(n * 3)};
 
-        for (std::size_t i{}; i < n; ++i) {
-            const int iter{data[i].escapeiter};
-            
-            if (iter == maxiter) {
+        float min_mu = 1e9f;
+        float max_mu = -1e9f;
+
+        // --- PASS 1: Global Min/Max Discovery ---
+        // Find the actual range of smooth iterations to normalize colors dynamically
+        for (std::size_t i = 0; i < n; ++i) {
+            // Only process escaping points with valid magnitude.
+            // mag_sq > 1.0f is a safety net against log2(log2(x)) returning NaN or negatives.
+            if (data[i].escapeiter < maxiter && data[i].magnitude_sq > 1.0f) {
+                float mu = static_cast<float>(data[i].escapeiter) + 2.0f - std::log2(std::log2(data[i].magnitude_sq));
+                if (mu < min_mu) min_mu = mu;
+                if (mu > max_mu) max_mu = mu;
+            }
+        }
+
+        // Safety check: fallback if no points escaped or the plane is completely uniform
+        if (max_mu <= min_mu) {
+            max_mu = min_mu + 1.0f; 
+        }
+        
+        // Precompute the inverse range for fast multiplication (avoids expensive division per pixel)
+        const float mu_range_inv = 1.0f / (max_mu - min_mu);
+
+        // --- PASS 2: Color Mapping and Rendering ---
+        for (std::size_t i = 0; i < n; ++i) {
+            if (data[i].escapeiter == maxiter || data[i].magnitude_sq <= 1.0f) {
                 // Interior points mapped to pure black
                 buffer[i * 3    ] = 0;
                 buffer[i * 3 + 1] = 0;
                 buffer[i * 3 + 2] = 0;
             } else {
-                // Continuous Potential Algorithm (Smooth Coloring)
-                const float mag_sq = data[i].magnitude_sq;
+                // 1. Calculate smooth iteration
+                float mu = static_cast<float>(data[i].escapeiter) + 2.0f - std::log2(std::log2(data[i].magnitude_sq));
                 
-                float mu = static_cast<float>(iter);
-                // Safety check: avoid log domain errors
-                if (mag_sq > 0.0f) {
-                    mu += 2.0f - std::log2(std::log2(mag_sq));
-                }
-
-                // Procedural Cosine Palette (Inigo Quilez technique)
-                // Multiplier 0.05f controls the frequency of the color bands
-                const float t = mu * 0.05f; 
-
-                // Generate smooth RGB sine waves with distinct phase shifts
-                buffer[i * 3    ] = static_cast<unsigned char>(127.5f * (1.0f + std::cos(t + 0.0f))); // Red
-                buffer[i * 3 + 1] = static_cast<unsigned char>(127.5f * (1.0f + std::cos(t + 1.0f))); // Green
-                buffer[i * 3 + 2] = static_cast<unsigned char>(127.5f * (1.0f + std::cos(t + 2.0f))); // Blue
+                // 2. Normalize to [0.0, 1.0] domain
+                float norm_mu = (mu - min_mu) * mu_range_inv;
+                
+                // 3. Map to LUT index [0, 255] with safety clamping
+                int lut_idx = static_cast<int>(norm_mu * 255.0f);
+                if (lut_idx < 0) lut_idx = 0;
+                if (lut_idx > 255) lut_idx = 255;
+                
+                // 4. Assign O(1) precomputed RGB color
+                buffer[i * 3    ] = lut_[lut_idx][0]; // Red
+                buffer[i * 3 + 1] = lut_[lut_idx][1]; // Green
+                buffer[i * 3 + 2] = lut_[lut_idx][2]; // Blue
             }
         }
         return buffer;
@@ -123,4 +181,5 @@ private:
     static inline const bool registered_{
         (color_registry::register_color("smooth", smooth::apply), true)
     };
+};
 };
