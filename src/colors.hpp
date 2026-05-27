@@ -304,6 +304,6 @@ public:
     }
 private:
     static inline const bool registered_{
-        (color_registry::register_color("smooth_origin", smooth::apply), true)
+        (color_registry::register_color("smooth_origin", smooth_origin::apply), true)
     };
 };
