@@ -271,7 +271,7 @@ public:
         const auto& data{plane.data()};
         const std::size_t n{data.size()};
         auto buffer{std::make_unique<unsigned char[]>(n * 3)};
-
+/*
         // --- Mathematical Palette Configuration (Inigo Quilez constants) ---
         // Smooth cosmic rainbow profile
         constexpr float bias = 0.5f;       // Center of the sine wave (brightness)
@@ -281,7 +281,18 @@ public:
         // Perfect symmetric phase shifts (0, 120, 240 degrees in radians)
         constexpr float pi_2_3 = 2.094395102f; 
         constexpr float pi_4_3 = 4.188790204f;
+*/
 
+
+// --- Alternative Tuning for Electric/Gold Palette ---
+        constexpr float bias = 0.5f;
+        constexpr float amp  = 0.5f;
+        constexpr float freq = 0.20f; // Slightly higher frequency for more detail
+
+// Shift the base phase to change the starting colors of the spectrum
+        constexpr float shift = 1.0f; 
+        constexpr float pi_2_3 = 2.094395102f;
+        constexpr float pi_4_3 = 4.188790204f;
         // Single-pass computation
         for (std::size_t i = 0; i < n; ++i) {
             const int iter{data[i].escapeiter};
@@ -297,12 +308,17 @@ public:
                 // 2. Non-linear frequency dampening (Power scale)
                 // Using std::sqrt or std::pow prevents high-frequency striping (aliasing) at deep zoom levels
                 float t = std::sqrt(mu) * freq; 
-
+/*
                 // 3. Evaluate the optimized symmetric cosine waves
                 // 127.5f * 2.0f * bias maps the [0.0, 1.0] domain straight to [0, 255] unsigned char
                 buffer[i * 3    ] = static_cast<unsigned char>(255.0f * (bias + amp * std::cos(t + 0.0f)));
                 buffer[i * 3 + 1] = static_cast<unsigned char>(255.0f * (bias + amp * std::cos(t + pi_2_3)));
                 buffer[i * 3 + 2] = static_cast<unsigned char>(255.0f * (bias + amp * std::cos(t + pi_4_3)));
+*/
+                buffer[i * 3    ] = static_cast<unsigned char>(255.0f * (bias + amp * std::cos(t + shift + 0.0f)));
+                buffer[i * 3 + 1] = static_cast<unsigned char>(255.0f * (bias + amp * std::cos(t + shift + pi_2_3)));
+                buffer[i * 3 + 2] = static_cast<unsigned char>(255.0f * (bias + amp * std::cos(t + shift + pi_4_3)));
+            
             }
         }
         return buffer;
