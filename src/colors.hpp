@@ -4,9 +4,10 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
-#include <cmath> // Required for std::log2
+#include <cmath> 
 #include <array>
 #include <vector>
+#include <algorithm> // <-- AGGIUNGI QUESTA RIGA per std::clamp
 #include "fractal_pl.hpp"
 
 class color_registry {
