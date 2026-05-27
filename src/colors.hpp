@@ -182,4 +182,3 @@ private:
         (color_registry::register_color("smooth", smooth::apply), true)
     };
 };
-};
