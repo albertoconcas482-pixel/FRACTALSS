@@ -3,11 +3,11 @@
 #include <cmath>
 #include <algorithm>
 #include <string>
+#include <filesystem>
 
 #include "fractal_pl.hpp"
 #include "mandel_pipeline.hpp"
-#include "render.hpp" // Added back to enable the presentation layer
-#include "utils.hpp"  // Kept in case you still need raw binary exports
+#include "utils.hpp"
 
 int main() {
     try {
@@ -38,8 +38,8 @@ int main() {
                                     base_quality * std::sqrt(2.0 * std::log2(zoom_clamped))))};
 
         // Output configurations
-        const std::string output_png_file  {"mandelbrot_smooth.png"};
-        const std::string output_data_file {"fractal_dump.bin"};
+        const std::string output_dir  {"/dev/shm/mandelbrot"};
+        const std::string output_data_file {output_dir + "/fractal_dump.bin"};
 
         std::cout << "=======================================\n";
         std::cout << "      FRACTALSS - High Performance mode\n";
@@ -47,7 +47,7 @@ int main() {
         std::cout << "Computed Zoom  : " << zoom     << "\n";
         std::cout << "Max Iterations : " << maxiter  << "\n";
         std::cout << "Resolution     : " << render_width << "x" << render_height << "\n";
-        std::cout << "Output Target  : " << output_png_file << "\n\n";
+        std::cout << "Output Target  : " << output_data_file << "\n\n";
 
         std::cout << "Initializing memory grid and starting compute kernel..." << std::endl;
         
@@ -60,16 +60,10 @@ int main() {
         mandel_pipeline::mandel_check(plane, maxiter);
         std::cout << "Kernel execution finished successfully." << std::endl;
 
-        // 3. Presentation Layer: Apply the optimized 2-pass smooth color scheme
-        std::cout << "Applying adaptive smooth coloring algorithm (LUT-based)..." << std::endl;
-        auto color_buffer = render::render_color(plane, "smooth_origin", maxiter);
-
-        // 4. Image I/O: Stream the RGB buffer directly to a lossless PNG file via stb_image_write
-        std::cout << "Streaming color buffer to disk as PNG..." << std::endl;
-        render::render_to_png(plane, color_buffer.get(), output_png_file);
-
-        // Optional: Keep the raw data dump if you still want to cross-analyze via Python
-        // export_data_raw(plane, output_data_file);
+        // 3. Export raw data to /dev/shm for Python post-processing
+        std::filesystem::create_directories(output_dir);
+        std::cout << "Exporting raw data to " << output_data_file << " ..." << std::endl;
+        export_data_raw(plane, output_data_file);
 
         const auto end_time{std::chrono::steady_clock::now()};
         const auto total_ms{
