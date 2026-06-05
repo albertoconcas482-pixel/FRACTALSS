@@ -27,8 +27,8 @@ int main() {
         const double ymin{cy - y_height / 2.0};
         const double ymax{cy + y_height / 2.0};
 
-        constexpr int render_width  {1920};
-        constexpr int render_height {1440};
+        constexpr int render_width  {3840};
+        constexpr int render_height {2160};
         
         // Adaptive runtime computation of maximum iterations based on zoom factor
         constexpr double base_quality{1000.0};
