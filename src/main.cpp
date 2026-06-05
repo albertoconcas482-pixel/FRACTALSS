@@ -13,7 +13,7 @@ int main() {
     try {
        constexpr double cx{-0.743643900055};
         constexpr double cy{ 0.131825890901};
-        constexpr double target_zoom{710000000.0};
+        constexpr double target_zoom{7100000000.0};
         
         // Mathematically derive the viewport bounds preserving the 4:3 aspect ratio (1920x1440)
         constexpr double x_width {3.5 / target_zoom};
