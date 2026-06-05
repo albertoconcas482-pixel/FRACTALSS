@@ -28,7 +28,7 @@ int main() {
         constexpr int render_height {2160};
         
         // Adaptive runtime computation of maximum iterations based on zoom factor
-        constexpr double base_quality{1000.0};
+        constexpr double base_quality{5000.0};
         const double zoom        {3.5 / (xmax - xmin)};
         const double zoom_clamped{std::max(zoom, 2.0)};
         const int    maxiter     {std::max(200, static_cast<int>(
