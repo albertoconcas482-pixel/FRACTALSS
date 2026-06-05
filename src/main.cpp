@@ -16,7 +16,7 @@ int main() {
         constexpr double cy{-0.051328422};
         
         // Target zoom level derived from your external explorer input
-        constexpr double target_zoom{5000000.0};
+        constexpr double target_zoom{50000000.0};
         
         // Mathematically derive the viewport bounds preserving the 4:3 aspect ratio (1920x1440)
         constexpr double x_width {3.5 / target_zoom};
