@@ -13,7 +13,7 @@ int main() {
     try {
       constexpr double cx{-0.743643900055 + 0.0000000025};  // ≈ -0.743643897
         constexpr double cy{ 0.131825890901};
-        constexpr double target_zoom{7100000000.0};
+        constexpr double target_zoom{710000000000.0};
         
         // Mathematically derive the viewport bounds preserving the 4:3 aspect ratio (1920x1440)
         constexpr double x_width {3.5 / target_zoom};
@@ -28,7 +28,7 @@ int main() {
         constexpr int render_height {2160};
         
         // Adaptive runtime computation of maximum iterations based on zoom factor
-        constexpr double base_quality{5000.0};
+        constexpr double base_quality{8000.0};
         const double zoom        {3.5 / (xmax - xmin)};
         const double zoom_clamped{std::max(zoom, 2.0)};
         const int    maxiter     {std::max(200, static_cast<int>(
