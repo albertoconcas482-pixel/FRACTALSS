@@ -11,12 +11,9 @@
 
 int main() {
     try {
-        // Target Viewport Settings (Seahorse valley dense spiral area)
-        constexpr double cx{-1.338396208};
-        constexpr double cy{-0.051328422};
-        
-        // Target zoom level derived from your external explorer input
-        constexpr double target_zoom{50000000000000.0};
+       constexpr double cx{-0.743643900055};
+        constexpr double cy{ 0.131825890901};
+        constexpr double target_zoom{71000000.0};
         
         // Mathematically derive the viewport bounds preserving the 4:3 aspect ratio (1920x1440)
         constexpr double x_width {3.5 / target_zoom};
