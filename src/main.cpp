@@ -11,7 +11,7 @@
 
 int main() {
     try {
-      constexpr double cx{-0.743643900055 + 0.000000049};  // ≈ -0.743643851
+      constexpr double cx{-0.743643900055 + 0.0000000025};  // ≈ -0.743643897
         constexpr double cy{ 0.131825890901};
         constexpr double target_zoom{7100000000.0};
         
